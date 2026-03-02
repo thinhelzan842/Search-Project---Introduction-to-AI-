@@ -1,6 +1,9 @@
+import random
+from typing import List, Tuple, Any
+
 from core import *
 
-class Rosenbrock(ProblemBase):
+class Rosenbrock(ContinuousProblemBase):
     def __init__(self, dim, bound):
         self.dim = dim
         self.l_bound = -bound
@@ -11,6 +14,11 @@ class Rosenbrock(ProblemBase):
 
     def name(self) -> str:
         return "Rosenbrock"
+    
+    def info(self) -> Any:
+        return {"dim"           :self.dim,
+                "left_bound"    :self.l_bound,
+                "right_bound"   :self.r_bound}
 
     def evaluate(self, solution) -> float: #list of [x, y, z,...] ~ dimensions
         return sum((100*((solution[i+1] - x*x)**2) + (x - 1)**2) for i,x in solution[:-1])

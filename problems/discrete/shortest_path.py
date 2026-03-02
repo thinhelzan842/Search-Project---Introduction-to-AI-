@@ -1,8 +1,9 @@
 import random
+from typing import List, Tuple, Any
 
 from core import *
 
-class ShortestPath(ProblemBase):
+class ShortestPath(DiscreteProblemBase):
     def __init__(self, size):
         self.size = size
         self.adj = [[] for _ in range(size)]
@@ -21,9 +22,14 @@ class ShortestPath(ProblemBase):
                         v.append(new)
                         self.adj[new].append(i)  # undirected
                         add -= 1
+        return 0 #start node, end node: size-1
 
     def name(self) -> str:
         return "Shortest Path"
+    
+    def info(self) -> Any:
+        return {"size"  :self.size,
+                "graph" :self.adj}
 
     def random_solution_generate(self) -> Any:
         pass
@@ -38,10 +44,16 @@ class ShortestPath(ProblemBase):
         return True
 
     def is_goal(self, solution) -> bool:
-        pass
+        return solution[-1] == self.size - 1
 
-    def get_neighbors(self, solution) -> Any:
-        pass
+    def get_neighbors(self, progress) -> Any:
+        node = progress[-1]
+        res = []
+        for v in self.adj[node]:
+            temp = progress
+            temp.append(v)
+            res.append(temp)
+        return res
 
     def get_bounds(self) -> List[Tuple[float, float]]:
         return [(0, self.size - 1) for _ in self.size]

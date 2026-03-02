@@ -1,7 +1,11 @@
+import numpy as np
+import random
+from typing import List, Tuple, Any
+
 from core import *
 
-class Rastrigin(ProblemBase):
-    def __init__(self):
+class Rastrigin(ContinuousProblemBase):
+    def __init__(self, dim, bound):
         self.dim = dim
         self.l_bound = -bound
         self.r_bound = bound
@@ -11,6 +15,11 @@ class Rastrigin(ProblemBase):
 
     def name(self) -> str:
         return "Rastrigin"
+    
+    def info(self) -> Any:
+        return {"dim"           :self.dim,
+                "left_bound"    :self.l_bound,
+                "right_bound"   :self.r_bound}
 
     def evaluate(self, solution) -> float: #list of [x, y, z,...] ~ dimensions
         solution = np.asarray(solution)

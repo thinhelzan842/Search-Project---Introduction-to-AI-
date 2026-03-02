@@ -1,8 +1,9 @@
 import math
-
+import random
+from typing import List, Tuple, Any
 from core import *
 
-class Griewank(ProblemBase):
+class Griewank(ContinuousProblemBase):
     def __init__(self, dim, bound):
         self.dim = dim
         self.l_bound = -bound
@@ -13,6 +14,11 @@ class Griewank(ProblemBase):
 
     def name(self) -> str:
         return "Griewank"
+    
+    def info(self) -> Any:
+        return {"dim"           :self.dim,
+                "left_bound"    :self.l_bound,
+                "right_bound"   :self.r_bound}
 
     def evaluate(self, solution) -> float: #list of [x, y, z,...] ~ dimensions
         return sum((x*x/4000.0) for x in solution) - math.prod((math.cos(x/math.sqrt(i)) + 1) for i,x in solution)

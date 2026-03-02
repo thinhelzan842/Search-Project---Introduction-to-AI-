@@ -1,10 +1,9 @@
 import random
-
-import numpy as np
+from typing import List, Tuple, Any
 
 from core import *
 
-class Sphere(ProblemBase):
+class Sphere(ContinuousProblemBase):
     def __init__(self, dim, bound):
         self.dim = dim
         self.l_bound = -bound
@@ -16,6 +15,11 @@ class Sphere(ProblemBase):
 
     def name(self) -> str:
         return "Sphere"
+    
+    def info(self) -> Any:
+        return {"dim"           :self.dim,
+                "left_bound"    :self.l_bound,
+                "right_bound"   :self.r_bound}
 
     def evaluate(self, solution) -> float: #list of [x, y, z,...] ~ dimensions
         return sum(x*x for x in solution)

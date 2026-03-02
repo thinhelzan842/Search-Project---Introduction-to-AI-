@@ -1,8 +1,9 @@
 import random
+from typing import List, Tuple, Any
 
 from core import *
 
-class GraphColoring(ProblemBase):
+class GraphColoring(DiscreteProblemBase):
     def __init__(self, size):
         self.size = size
         self.adj = [[] for _ in range(self.size)]
@@ -23,7 +24,7 @@ class GraphColoring(ProblemBase):
                         add -= 1
 
     def random_solution_generate(self): #assist genetic algorithm
-        sol = [random.randint(0, self.size-1) for _ in range(size)]
+        sol = [random.randint(0, self.size-1) for _ in range(self.size)]
         """
         while self.evaluate(sol) == -1:
             for v in sol:
@@ -34,6 +35,10 @@ class GraphColoring(ProblemBase):
 
     def name(self) -> str:
         return "Graph Coloring"
+    
+    def info(self) -> Any:
+        return {"size"  :self.size,
+                "graph" :self.adj}
 
     def evaluate(self, solution) -> float: #solution is color list
         unique_clrs = []
@@ -56,7 +61,7 @@ class GraphColoring(ProblemBase):
         pass
 
     def get_neighbors(self) -> Any:
-        pass
+        raise NotImplementedError("Graph coloring doesn't support returning neighbors-cannot use BFS, DFS, ...")
 
     def get_bounds(self) -> List[Tuple[float, float]]:
         return [(0, self.size - 1) for _ in self.size]

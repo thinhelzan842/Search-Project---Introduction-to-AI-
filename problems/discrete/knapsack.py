@@ -1,8 +1,9 @@
 import random
+from typing import List, Tuple, Any
 
 from core import *
 
-class Knapsack(ProblemBase):
+class Knapsack(DiscreteProblemBase):
     def __init__(self, size, limit):
         self.size = size
         self.limit = limit
@@ -14,6 +15,12 @@ class Knapsack(ProblemBase):
 
     def name(self) -> str:
         return "Knapsack"
+    
+    def info(self) -> Any:
+        return {"size"      :self.size,
+                "limit"     :self.limit,
+                "profits"   :self.profits,
+                "weights"   :self.weights}
 
     def evaluate(self, solution) -> float: #solution is a 0/1 list
         res = 0
@@ -35,8 +42,11 @@ class Knapsack(ProblemBase):
     def is_goal(self, solution) -> bool:
         pass
 
-    def get_neighbors(self) -> Any:
-        pass
+    def get_neighbors(self, progress) -> Any:
+        take = not_take = progress
+        take.append(1)
+        not_take.append(0)
+        return (take, not_take)
 
     def get_bounds(self) -> List[Tuple[float, float]]:
         return [(0, 1) for _ in range(self.size)]

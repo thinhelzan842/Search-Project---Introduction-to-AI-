@@ -1,8 +1,9 @@
 import random
+from typing import List, Tuple, Any
 
 from core import *
 
-class TravelingSalesman(ProblemBase):
+class TravelingSalesman(DiscreteProblemBase):
     def __init__(self, size, time_limit, cost_limit):
         self.size = size
         self.time_limit = time_limit
@@ -30,6 +31,13 @@ class TravelingSalesman(ProblemBase):
 
     def name(self) -> str:
         return "Traveling Salesman"
+    
+    def info(self) -> Any:
+        return {"size"          :self.size,
+                "time_limit"    :self.time_limit,
+                "cost_limit"    :self.cost_limit,
+                "costs"         :self.costs,
+                "times"         :self.times}
 
     def evaluate(self, solution) -> float: #city list filled
         sum_cost = 0
@@ -47,7 +55,7 @@ class TravelingSalesman(ProblemBase):
                 return float('inf')
             cur_time = max(start, cur_time)
 
-        if sum_dist > self.cost_limit or cur_time > self.time_limit:
+        if sum_cost > self.cost_limit or cur_time > self.time_limit:
             return float('inf')
 
         return sum_cost
@@ -62,8 +70,15 @@ class TravelingSalesman(ProblemBase):
     def is_goal(self, solution) -> bool:
         pass
 
-    def get_neighbors(self) -> Any:
-        pass
+    def get_neighbors(self, progress) -> Any:
+        node = progress[-1]
+        res = []
+        for i in range(self.size):
+            if self.costs[node][i] != float('inf'):
+                temp = progress
+                temp.append(i)
+                res.append(temp)
+        return res
 
     def get_bounds(self) -> List[Tuple[float, float]]:
-        return [(0, self.size - 1) for _ in self.size]
+        return [(0, self.size - 1) for _ in range(self.size)]
