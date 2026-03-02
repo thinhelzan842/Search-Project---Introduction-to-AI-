@@ -1,4 +1,5 @@
-numpy
+numpy>=1.26.0
 random
 abc
 ast
+matplotlib>=3.8.0
