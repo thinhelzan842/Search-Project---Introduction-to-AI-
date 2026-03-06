@@ -24,14 +24,13 @@ class HillClimbing(AlgorithmBase):
         return neighbor
 
     def run(self, problem):
-        # Khởi tạo
         current_sol = problem.random_solution_generate()
         current_score = problem.evaluate(current_sol)
         is_min = problem.is_min_optimization()
         
         best_sol, best_score = list(current_sol), current_score
 
-        # Yield lần đánh giá đầu tiên
+        # Yield first judge  
         yield {
             'iteration': 0,
             'current_solution': list(current_sol),
@@ -44,11 +43,11 @@ class HillClimbing(AlgorithmBase):
             neighbor_sol = self._get_neighbor(current_sol, problem)
             neighbor_score = problem.evaluate(neighbor_sol)
             
-            # So sánh và cập nhật
+            # Compare and Update
             if (is_min and neighbor_score < current_score) or (not is_min and neighbor_score > current_score):
                 current_sol, current_score = neighbor_sol, neighbor_score
                 
-                # Cập nhật Global Best
+                # Update Global Best
                 if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
                     best_sol, best_score = list(current_sol), current_score
 
@@ -60,7 +59,6 @@ class HillClimbing(AlgorithmBase):
                 'best_score': best_score
             }
 
-            # Chỉ dừng sớm nếu là bài toán liên tục và đạt nghiệm tối ưu
             if not problem.is_discrete() and problem.is_goal(best_sol): 
                 break
 
