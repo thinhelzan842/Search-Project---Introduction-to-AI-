@@ -71,7 +71,6 @@ class SimulatedAnnealing(AlgorithmBase):
                 'temperature': temp
             }
 
-           # Chỉ dừng sớm nếu là bài toán liên tục và đạt nghiệm tối ưu
             if not problem.is_discrete() and problem.is_goal(best_sol): 
                 break
 
