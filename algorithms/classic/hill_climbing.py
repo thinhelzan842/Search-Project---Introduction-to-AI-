@@ -1,33 +1,67 @@
+import random
 import numpy as np
-from algorithms.classic.problem import Problem
-from algorithms.classic.neighborhood import NeighborhoodStrategy
+from core.base import AlgorithmBase
 
-class HillClimbing:
-    def __init__(self, problem: Problem, neighborhood: NeighborhoodStrategy, max_iters: int = 1000):
-        self.problem = problem
-        self.neighborhood = neighborhood
+class HillClimbing(AlgorithmBase):
+    def __init__(self, max_iters=1000, step_size=0.1):
         self.max_iters = max_iters
+        self.step_size = step_size
 
-    def run(self):
-        curr_state = self.problem.random_state()
-        curr_energy = self.problem.evaluate(curr_state)
-        history = [curr_energy]
+    def name(self) -> str:
+        return "Hill Climbing"
 
-        for _ in range(self.max_iters):
-            neighbors = self.neighborhood.get_neighbors(curr_state)
-            best_n_state, best_n_energy = None, float('inf')
+    def _get_neighbor(self, current, problem):
+        neighbor = list(current)
+        if not problem.is_discrete():
+            bounds = problem.get_bounds()
+            for i in range(len(neighbor)):
+                val = neighbor[i] + random.gauss(0, self.step_size)
+                neighbor[i] = max(bounds[i][0], min(bounds[i][1], val))
+        else:
+            if len(neighbor) > 1:
+                idx1, idx2 = random.sample(range(len(neighbor)), 2)
+                neighbor[idx1], neighbor[idx2] = neighbor[idx2], neighbor[idx1]
+        return neighbor
 
-            for n_state in neighbors:
-                n_state = self.problem.clip(n_state)
-                e = self.problem.evaluate(n_state)
-                if e < best_n_energy:
-                    best_n_energy, best_n_state = e, n_state
+    def run(self, problem):
+        # Khởi tạo
+        current_sol = problem.random_solution_generate()
+        current_score = problem.evaluate(current_sol)
+        is_min = problem.is_min_optimization()
+        
+        best_sol, best_score = list(current_sol), current_score
 
-            if best_n_energy < curr_energy:
-                curr_state, curr_energy = best_n_state, best_n_energy
-            else:
-                break 
+        # Yield lần đánh giá đầu tiên
+        yield {
+            'iteration': 0,
+            'current_solution': list(current_sol),
+            'current_score': current_score,
+            'best_solution': list(best_sol),
+            'best_score': best_score
+        }
 
-            history.append(curr_energy)
+        for i in range(self.max_iters):
+            neighbor_sol = self._get_neighbor(current_sol, problem)
+            neighbor_score = problem.evaluate(neighbor_sol)
+            
+            # So sánh và cập nhật
+            if (is_min and neighbor_score < current_score) or (not is_min and neighbor_score > current_score):
+                current_sol, current_score = neighbor_sol, neighbor_score
+                
+                # Cập nhật Global Best
+                if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
+                    best_sol, best_score = list(current_sol), current_score
 
-        return curr_state, curr_energy, history
+            yield {
+                'iteration': i + 1,
+                'current_solution': list(current_sol),
+                'current_score': current_score,
+                'best_solution': list(best_sol),
+                'best_score': best_score
+            }
+
+            # Chỉ dừng sớm nếu là bài toán liên tục và đạt nghiệm tối ưu
+            if not problem.is_discrete() and problem.is_goal(best_sol): 
+                break
+
+        return best_sol, best_score

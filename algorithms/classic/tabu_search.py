@@ -1,46 +1,92 @@
+import random
 import numpy as np
-from core.problem import Problem
-from core.neighborhood import NeighborhoodStrategy
-from utils.tabu_memory import TabuList
+from core.base import AlgorithmBase
 
-class TabuSearch:
-    def __init__(self, problem: Problem, neighborhood: NeighborhoodStrategy, 
-                 tabu_size: int = 50, max_iters: int = 500):
-        self.problem = problem
-        self.neighborhood = neighborhood
+class TabuSearch(AlgorithmBase):
+    def __init__(self, max_iters=500, tabu_tenure=10, num_neighbors=20, step_size=0.1):
         self.max_iters = max_iters
-        self.tabu_list = TabuList(max_size=tabu_size)
+        self.tabu_tenure = tabu_tenure
+        self.num_neighbors = num_neighbors
+        self.step_size = step_size
 
-    def run(self):
-        curr_state = self.problem.random_state()
-        curr_energy = self.problem.evaluate(curr_state)
+    def name(self) -> str:
+        return "Tabu Search"
+
+    def _get_neighbor(self, current, problem):
+        neighbor = list(current)
+        if not problem.is_discrete():
+            bounds = problem.get_bounds()
+            for i in range(len(neighbor)):
+                val = neighbor[i] + random.gauss(0, self.step_size)
+                neighbor[i] = max(bounds[i][0], min(bounds[i][1], val))
+        else:
+            if len(neighbor) > 1:
+                idx1, idx2 = random.sample(range(len(neighbor)), 2)
+                neighbor[idx1], neighbor[idx2] = neighbor[idx2], neighbor[idx1]
+        return neighbor
+
+    def _hash_sol(self, sol, is_discrete):
+        return tuple(sol) if is_discrete else tuple(round(x, 4) for x in sol)
+
+    def run(self, problem):
+        current_sol = problem.random_solution_generate()
+        current_score = problem.evaluate(current_sol)
+        best_sol, best_score = list(current_sol), current_score
         
-        best_state, best_energy = np.copy(curr_state), curr_energy
-        history = [best_energy]
+        is_min = problem.is_min_optimization()
+        is_discrete = problem.is_discrete()
+        
+        tabu_list = {self._hash_sol(current_sol, is_discrete): self.tabu_tenure}
 
-        for _ in range(self.max_iters):
-            neighbors = self.neighborhood.get_neighbors(curr_state)
-            best_c_state, best_c_energy = None, float('inf')
+        yield {
+            'iteration': 0,
+            'current_solution': list(current_sol),
+            'current_score': current_score,
+            'best_solution': list(best_sol),
+            'best_score': best_score
+        }
 
-            for n_state in neighbors:
-                n_state = self.problem.clip(n_state)
-                e = self.problem.evaluate(n_state)
+        for iteration in range(self.max_iters):
+            best_candidate_sol = None
+            best_candidate_score = float('inf') if is_min else float('-inf')
+            
+            # Survey the neighborhood  
+            for _ in range(self.num_neighbors):
+                n_sol = self._get_neighbor(current_sol, problem)
+                n_score = problem.evaluate(n_sol)
+                n_hash = self._hash_sol(n_sol, is_discrete)
                 
-                is_aspirated = (e < best_energy)
-                is_tabu = self.tabu_list.is_tabu(n_state)
+                is_tabu = n_hash in tabu_list and tabu_list[n_hash] >= iteration
+                aspiration = (is_min and n_score < best_score) or (not is_min and n_score > best_score)
+                
+                if not is_tabu or aspiration:
+                    if (is_min and n_score < best_candidate_score) or (not is_min and n_score > best_candidate_score):
+                        best_candidate_score = n_score
+                        best_candidate_sol = list(n_sol)
 
-                if (not is_tabu or is_aspirated) and (e < best_c_energy):
-                    best_c_energy, best_c_state = e, n_state
+            # Choose the random neighbor not tabu 
+            if best_candidate_sol is None:
+                best_candidate_sol = self._get_neighbor(current_sol, problem)
+                best_candidate_score = problem.evaluate(best_candidate_sol)
 
-            if best_c_state is None:
-                break 
+            current_sol, current_score = best_candidate_sol, best_candidate_score
+            
+            # Update Global Best
+            if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
+                best_sol, best_score = list(current_sol), current_score
+                
+            # take note in the tabu list 
+            tabu_list[self._hash_sol(current_sol, is_discrete)] = iteration + self.tabu_tenure
 
-            curr_state, curr_energy = best_c_state, best_c_energy
-            self.tabu_list.add(curr_state)
+            yield {
+                'iteration': iteration + 1,
+                'current_solution': list(current_sol),
+                'current_score': current_score,
+                'best_solution': list(best_sol),
+                'best_score': best_score
+            }
 
-            if curr_energy < best_energy:
-                best_state, best_energy = np.copy(curr_state), curr_energy
+            if not problem.is_discrete() and problem.is_goal(best_sol): 
+                break
 
-            history.append(best_energy)
-
-        return best_state, best_energy, history
+        return best_sol, best_score
