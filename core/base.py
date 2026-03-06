@@ -26,6 +26,9 @@ class ProblemBase(ABC):
     def random_solution_generate(self) -> Any: #assist algorithms like genetic algorithm, etc
         pass
 
+    def get_initial_state(self) -> Any:
+        pass
+
     @abstractmethod
     def get_neighbors(self, progress) -> Any: #this is for search in discrete problems
         pass
@@ -39,10 +42,19 @@ class ProblemBase(ABC):
         pass
 
 class ContinuousProblemBase(ProblemBase):
+    def is_discrete(self) -> bool:
+        return False
+
     def get_neighbors(self) -> Any:
         raise NotImplementedError("Continuous problems don't support returning neighbors")
+
+    def get_initial_state(self) -> Any:
+        return self.random_solution_generate()
     
 class DiscreteProblemBase(ProblemBase):
+    def is_discrete(self) -> bool:
+        return True
+
     def get_bounds(self) -> Any:
         raise NotImplementedError("Discrete problems don't support returning bounds")
 

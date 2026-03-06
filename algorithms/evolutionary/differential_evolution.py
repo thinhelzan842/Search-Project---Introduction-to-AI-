@@ -15,17 +15,24 @@ class DifferentialEvolution(AlgorithmBase):
     def run(self, problem):
         #initialize population
         bounds = problem.get_bounds()
-        self.l_bound, self.r_bound = np.asarray(bounds).T
+        l_bound, r_bound = np.asarray(bounds).T
         dim = len(bounds)
         pop = np.random.rand(self.size, dim)
         for i in range(self.size):
-            pop[i] = self.l_bound + pop[i] * (self.r_bound - self.l_bound)
+            pop[i] = l_bound + pop[i] * (r_bound - l_bound)
 
         #first evaluation
         fitness = np.asarray([problem.evaluate(ind) for ind in pop])
         best_idx = np.argmin(fitness)
         best_sol = pop[best_idx]
         best_scr = fitness[best_idx]
+        yield {
+            'generation'    :0,
+            'population'    :pop.copy(),
+            'fitness'       :fitness.copy(),
+            'best_solution' :best_sol.copy(),
+            'best_score'    :best_scr
+        }
 
         for gen in range(self.gen):
             for i in range(self.size):
@@ -34,7 +41,7 @@ class DifferentialEvolution(AlgorithmBase):
                 a, b, c = pop[np.random.choice(idxs, 3, replace=False)]
 
                 #mutation and crossover
-                mutant = np.clip(a + self.mut * (b - c), self.l_bound, self.r_bound)
+                mutant = np.clip(a + self.mut * (b - c), l_bound, r_bound)
                 cross_points = np.random.rand(dim) < self.crossp
                 if not np.any(cross_points):
                     cross_points[np.random.randint(0, dim)] = True
@@ -48,5 +55,13 @@ class DifferentialEvolution(AlgorithmBase):
                     if f < best_scr:
                         best_scr = f
                         best_sol = trial
+            yield {
+                'generation'    :gen + 1,
+                'population'    :pop.copy(),
+                'fitness'       :fitness.copy(),
+                'best_solution' :best_sol.copy(),
+                'best_score'    :best_scr
+            }
+
 
         return best_sol, best_scr
