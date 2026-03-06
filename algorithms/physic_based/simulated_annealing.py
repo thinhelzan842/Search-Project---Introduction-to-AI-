@@ -1,43 +1,78 @@
+import math
+import random
 import numpy as np
-from core.problem import Problem
-from core.neighborhood import NeighborhoodStrategy
-from core.cooling import CoolingSchedule
+from core.base import AlgorithmBase
 
-class SimulatedAnnealing:
-    def __init__(self, problem: Problem, neighborhood: NeighborhoodStrategy, 
-                 cooling: CoolingSchedule, t_init: float = 100.0, 
-                 t_min: float = 1e-3, l_epochs: int = 20):
-        self.problem = problem
-        self.neighborhood = neighborhood
-        self.cooling = cooling
-        self.t_init = t_init
-        self.t_min = t_min
-        self.l_epochs = l_epochs # Số bước Markov Chain cân bằng nhiệt
+class SimulatedAnnealing(AlgorithmBase):
+    def __init__(self, max_epochs=1000, initial_temp=100.0, cooling_rate=0.95, step_size=0.5):
+        self.max_epochs = max_epochs
+        self.initial_temp = initial_temp
+        self.cooling_rate = cooling_rate
+        self.step_size = step_size
 
-    def run(self):
-        curr_state = self.problem.random_state()
-        curr_energy = self.problem.evaluate(curr_state)
-        
-        best_state, best_energy = np.copy(curr_state), curr_energy
-        T = self.t_init
-        history = [best_energy]
+    def name(self) -> str:
+        return "Simulated Annealing"
 
-        while T > self.t_min:
-            for _ in range(self.l_epochs):
-                new_state = self.neighborhood.get_neighbors(curr_state, temp=1.0)[0]
-                new_state = self.problem.clip(new_state)
-                new_energy = self.problem.evaluate(new_state)
-                
-                delta_e = new_energy - curr_energy
-                
-                # Metropolis Acceptance Criterion
-                if delta_e < 0 or np.random.rand() < np.exp(-delta_e / T):
-                    curr_state, curr_energy = new_state, new_energy
-                    
-                    if curr_energy < best_energy:
-                        best_state, best_energy = np.copy(curr_state), curr_energy
-                        
-            history.append(best_energy)
-            T = self.cooling.update(T) # Hạ nhiệt độ
+    def _get_neighbor(self, current, problem):
+        neighbor = list(current)
+        if not problem.is_discrete():
+            bounds = problem.get_bounds()
+            for i in range(len(neighbor)):
+                val = neighbor[i] + random.gauss(0, self.step_size)
+                neighbor[i] = max(bounds[i][0], min(bounds[i][1], val))
+        else:
+            if len(neighbor) > 1:
+                idx1, idx2 = random.sample(range(len(neighbor)), 2)
+                neighbor[idx1], neighbor[idx2] = neighbor[idx2], neighbor[idx1]
+        return neighbor
+
+    def run(self, problem):
+        current_sol = problem.random_solution_generate()
+        current_score = problem.evaluate(current_sol)
+        best_sol, best_score = list(current_sol), current_score
+        is_min = problem.is_min_optimization()
+        temp = self.initial_temp
+
+        yield {
+            'iteration': 0,
+            'current_solution': list(current_sol),
+            'current_score': current_score,
+            'best_solution': list(best_sol),
+            'best_score': best_score,
+            'temperature': temp
+        }
+
+        for epoch in range(self.max_epochs):
+            neighbor_sol = self._get_neighbor(current_sol, problem)
+            neighbor_score = problem.evaluate(neighbor_sol)
             
-        return best_state, best_energy, history
+            delta_e = neighbor_score - current_score if is_min else current_score - neighbor_score
+            
+            if delta_e < 0:
+                current_sol, current_score = neighbor_sol, neighbor_score
+                if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
+                    best_sol, best_score = list(current_sol), current_score
+            else:
+                if temp > 1e-8:
+                    try:
+                        if random.random() < math.exp(-delta_e / temp):
+                            current_sol, current_score = neighbor_sol, neighbor_score
+                    except OverflowError:
+                        pass
+            
+            temp *= self.cooling_rate
+            
+            yield {
+                'iteration': epoch + 1,
+                'current_solution': list(current_sol),
+                'current_score': current_score,
+                'best_solution': list(best_sol),
+                'best_score': best_score,
+                'temperature': temp
+            }
+
+           # Chỉ dừng sớm nếu là bài toán liên tục và đạt nghiệm tối ưu
+            if not problem.is_discrete() and problem.is_goal(best_sol): 
+                break
+
+        return best_sol, best_score
