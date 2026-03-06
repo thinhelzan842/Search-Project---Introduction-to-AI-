@@ -1,6 +1,6 @@
 plotly
 pandas
-numpy>=1.26.0
+numpy
 random
 abc
 ast
