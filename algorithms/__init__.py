@@ -8,8 +8,6 @@ __all__ = [
     'TabuSearch',
     'SimulatedAnnealing',
     'GeneticAlgorithm',
-"""    'GeneticAlgorithm_Discrete',
-    'GeneticAlgorithm_Continuous',"""
     'DifferentialEvolution',
     'PSO',
     'ACO',

@@ -14,12 +14,17 @@ def main():
     aco = ACO(num_ants=30, max_iters=300)
     co = CuckooOptimization(num_nests=30, max_iters=300)
     tlbo = TLBO(pop_size=20, max_iters=300)
-    
+    ff = FireflyAlgorithm(popsize=30, gen=300)
+    abc = ArtificialBeeColony(popsize=30, gen=300)
+    de = DifferentialEvolution(popsize=50, gen=150)
+    ga_cont = GeneticAlgorithm(size=50, gen=150, desire=0.001, crossover_type='multi_point', mutation_type='gaussian')
+    ga_disc = GeneticAlgorithm(size=50, gen=150, desire=None, crossover_type='multi_point', mutation_type='bit_flip')
+
     # Algorithms for continuous problems
-    continuous_algorithms = [hb, tlbo, sa, ts, pso, aco, co]
+    continuous_algorithms = [hb, tlbo, sa, ts, pso, aco, co, ff, abc, de, ga_cont]
     
     # Algorithms for discrete problems
-    discrete_algorithms = [hb, sa, ts]
+    discrete_algorithms = [hb, sa, ts, ga_disc]
 
     # Continuous problems
     continuous_problems = [

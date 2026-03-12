@@ -1,48 +1,116 @@
 import numpy as np
-import random
+from core import *
 
 class ArtificialBeeColony(AlgorithmBase):
-    def __init__(self, n_bees=30, limit=20):
-        self.n_bees = n_bees
-        self.limit = limit  # Abandonment threshold
+    def __init__(self, limit=50, popsize=20, gen=1000):
+        self.size = popsize  # Number of food sources
+        self.limit = limit   # Trials before a source is abandoned
+        self.gen = gen
 
     def name(self) -> str:
         return "Artificial Bee Colony"
+    
+    def is_compatible(self, problem) -> bool:
+        return hasattr(problem, 'get_bounds') and hasattr(problem, 'evaluate')
 
     def run(self, problem):
-        # Initialize sources (half the bees are employed)
-        n_sources = self.n_bees // 2
-        sources = [problem.get_random_solution() for _ in range(n_sources)]
-        fitness = [problem.evaluate(s) for s in sources]
-        trials = [0] * n_sources # Track failed improvements
+        # Initialize population (food sources)
+        bounds = problem.get_bounds()
+        l_bound, r_bound = np.asarray(bounds).T
+        dim = len(bounds)
+        pop = np.random.rand(self.size, dim)
+        for i in range(self.size):
+            pop[i] = l_bound + pop[i] * (r_bound - l_bound)
 
-        for _ in range(problem.max_iter):
-            # 1. Employed Bees
-            for i in range(n_sources):
-                new_sol = problem.local_search(sources[i])
-                if problem.evaluate(new_sol) < fitness[i]:
-                    sources[i], fitness[i], trials[i] = new_sol, problem.evaluate(new_sol), 0
-                else:
-                    trials[i] += 1
+        # First evaluation
+        fitness = np.asarray([problem.evaluate(ind) for ind in pop])
+        trials = np.zeros(self.size)  # Track abandonment
+        
+        best_idx = np.argmin(fitness)
+        best_sol = pop[best_idx].copy()
+        best_scr = fitness[best_idx]
+        
+        yield {
+            'generation': 0,
+            'population': pop.copy(),
+            'fitness': fitness.copy(),
+            'best_solution': best_sol.copy(),
+            'best_score': best_scr
+        }
 
-            # 2. Onlooker Bees (Selection based on fitness probability)
-            probs = [1/f if f != 0 else 1 for f in fitness]
-            total = sum(probs)
-            probs = [p/total for p in probs]
-            
-            for _ in range(n_sources):
-                i = np.random.choice(range(n_sources), p=probs)
-                new_sol = problem.local_search(sources[i])
-                if problem.evaluate(new_sol) < fitness[i]:
-                    sources[i], fitness[i], trials[i] = new_sol, problem.evaluate(new_sol), 0
-                else:
-                    trials[i] += 1
-
-            # 3. Scout Bees
-            for i in range(n_sources):
-                if trials[i] > self.limit:
-                    sources[i] = problem.get_random_solution()
-                    fitness[i] = problem.evaluate(sources[i])
+        for gen in range(self.gen):
+            # 1. Employed Bee Phase
+            for i in range(self.size):
+                # Pick a random partner j != i
+                idxs = [idx for idx in range(self.size) if idx != i]
+                j = np.random.choice(idxs)
+                
+                # Pick a random dimension to mutate
+                d = np.random.randint(0, dim)
+                phi = np.random.uniform(-1, 1)
+                
+                # Create trial solution
+                trial = pop[i].copy()
+                trial[d] = trial[d] + phi * (trial[d] - pop[j][d])
+                trial = np.clip(trial, l_bound, r_bound)
+                
+                f = problem.evaluate(trial)
+                if f < fitness[i]:
+                    pop[i] = trial
+                    fitness[i] = f
                     trials[i] = 0
+                else:
+                    trials[i] += 1
+
+            # 2. Onlooker Bee Phase
+            # Calculate selection probabilities based on fitness
+            # (Standard ABC mapping to handle negative objective values)
+            fit_vals = np.where(fitness >= 0, 1.0 / (1.0 + fitness), 1.0 + np.abs(fitness))
+            probs = fit_vals / np.sum(fit_vals)
+            
+            m = 0
+            i = 0
+            while m < self.size:
+                if np.random.rand() < probs[i]:
+                    m += 1
+                    idxs = [idx for idx in range(self.size) if idx != i]
+                    j = np.random.choice(idxs)
                     
-        return sources[np.argmin(fitness)]
+                    d = np.random.randint(0, dim)
+                    phi = np.random.uniform(-1, 1)
+                    
+                    trial = pop[i].copy()
+                    trial[d] = trial[d] + phi * (trial[d] - pop[j][d])
+                    trial = np.clip(trial, l_bound, r_bound)
+                    
+                    f = problem.evaluate(trial)
+                    if f < fitness[i]:
+                        pop[i] = trial
+                        fitness[i] = f
+                        trials[i] = 0
+                    else:
+                        trials[i] += 1
+                i = (i + 1) % self.size
+
+            # Update best solution found so far
+            current_best_idx = np.argmin(fitness)
+            if fitness[current_best_idx] < best_scr:
+                best_scr = fitness[current_best_idx]
+                best_sol = pop[current_best_idx].copy()
+
+            # 3. Scout Bee Phase
+            for i in range(self.size):
+                if trials[i] > self.limit:
+                    pop[i] = l_bound + np.random.rand(dim) * (r_bound - l_bound)
+                    fitness[i] = problem.evaluate(pop[i])
+                    trials[i] = 0
+
+            yield {
+                'generation': gen + 1,
+                'population': pop.copy(),
+                'fitness': fitness.copy(),
+                'best_solution': best_sol.copy(),
+                'best_score': best_scr
+            }
+
+        return best_sol, best_scr
