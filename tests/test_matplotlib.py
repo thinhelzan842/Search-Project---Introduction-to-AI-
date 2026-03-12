@@ -9,7 +9,6 @@ from algorithms import HillClimbing , SimulatedAnnealing, TabuSearch
 from problems import *
 
 def run_algo_and_get_history(algo, problem):
-    """Hàm chạy thuật toán và hứng dữ liệu từ Generator (yield)"""
     history = []
     print(f"Đang chạy {algo.name()} trên {problem.name()}...")
     
@@ -21,7 +20,6 @@ def run_algo_and_get_history(algo, problem):
     return history
 
 def plot_problem_comparison(problem, algorithms):
-    """Hàm vẽ biểu đồ hội tụ bằng Matplotlib"""
     plt.figure(figsize=(10, 6))
     
     for algo in algorithms:
@@ -35,8 +33,8 @@ def plot_problem_comparison(problem, algorithms):
     plt.show()
 
 if __name__ == "__main__":
-    ls = HillClimbing(max_iters=150, step_size=0.5)
-    sa = SimulatedAnnealing(max_epochs=150, initial_temp=100.0, cooling_rate=0.92, step_size=0.5)
+    ls = HillClimbing(max_iters=1300, step_size=0.5, num_neighbors=15)
+    sa = SimulatedAnnealing(max_epochs=1000, initial_temp=100.0, cooling_rate=0.99, step_size=0.5, markov_chain_length=20)
     ts = TabuSearch(max_iters=150, tabu_tenure=10, num_neighbors=10, step_size=0.5)
     
     algos_to_test = [ls, sa, ts]
