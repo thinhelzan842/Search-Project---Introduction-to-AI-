@@ -1,1 +1,6 @@
 __pycache__/
+.venv/
+.vscode/
+.idea/
+*.pyc
+*.pyo

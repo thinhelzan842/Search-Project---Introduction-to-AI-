@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 
-from algorithms import HillClimbing , SimulatedAnnealing, TabuSearch
+from algorithms import *
 from problems import *
 
 def run_algo_and_get_history(algo, problem):
@@ -39,14 +39,23 @@ if __name__ == "__main__":
     sa = SimulatedAnnealing(max_epochs=150, initial_temp=100.0, cooling_rate=0.92, step_size=0.5)
     ts = TabuSearch(max_iters=150, tabu_tenure=10, num_neighbors=10, step_size=0.5)
     
-    algos_to_test = [ls, sa, ts]
+    
+    ga_cont = GeneticAlgorithm(size=50, gen=150, desire=0.001, crossover_type='multi_point', mutation_type='gaussian')
+    #crossover_type='one_point','multi_point','order'
+    #mutation_type='bit_flip','swap','gaussian'
+    ga_graph = GeneticAlgorithm(size=50, gen=150, desire=None, crossover_type='order', mutation_type='swap')
+    ga_disc = GeneticAlgorithm(size=50, gen=150, desire=None, crossover_type='multi_point', mutation_type='bit_flip')
+    de = DifferentialEvolution(popsize=50, gen=150)
+
 
     # TEST 1: Ackley
+    algos_to_test_1 = [ls, sa, ts, ga_cont, de]
     ackley_prob = Ackley(dim=10, bound=5.0)
-    plot_problem_comparison(ackley_prob, algos_to_test)
+    plot_problem_comparison(ackley_prob, algos_to_test_1)
+
 
 
     # TEST 2: (TSP)
-
+    algos_to_test_2 = [ls, sa, ts]#, ga_graph]
     tsp_prob = TravelingSalesman(size=10, time_limit=2000, cost_limit=2000)
-    plot_problem_comparison(tsp_prob, algos_to_test)
+    plot_problem_comparison(tsp_prob, algos_to_test_2)
