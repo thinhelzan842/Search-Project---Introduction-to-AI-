@@ -1,13 +1,4 @@
-<<<<<<< HEAD
 from algorithms import *
-=======
-from algorithms.classic import HillClimbing, TabuSearch
-from algorithms.physic_based.simulated_annealing import SimulatedAnnealing
-from algorithms.biology import PSO, ACO, CuckooOptimization
-from algorithms.evolutionary import GeneticAlgorithm
-from algorithms.human_based.TLBO import TLBO
-
->>>>>>> 16b31c7dd37a3a79de0f204a4e665f30996e9ff8
 from problems import *
 
 from utils.evaluator import BenchmarkEngine
