@@ -4,11 +4,13 @@ import numpy as np
 from core.base import AlgorithmBase
 
 class SimulatedAnnealing(AlgorithmBase):
-    def __init__(self, max_epochs=1000, initial_temp=100.0, cooling_rate=0.95, step_size=0.5):
+    def __init__(self, max_epochs=1000, initial_temp=100.0, cooling_rate=0.99, step_size=0.5, markov_chain_length=20, step_decay=0.99):
         self.max_epochs = max_epochs
         self.initial_temp = initial_temp
         self.cooling_rate = cooling_rate
         self.step_size = step_size
+        self.markov_chain_length = markov_chain_length
+        self.step_decay = step_decay
 
     def name(self) -> str:
         return "Simulated Annealing"
@@ -43,22 +45,24 @@ class SimulatedAnnealing(AlgorithmBase):
         }
 
         for epoch in range(self.max_epochs):
-            neighbor_sol = self._get_neighbor(current_sol, problem)
-            neighbor_score = problem.evaluate(neighbor_sol)
-            
-            delta_e = neighbor_score - current_score if is_min else current_score - neighbor_score
-            
-            if delta_e < 0:
-                current_sol, current_score = neighbor_sol, neighbor_score
-                if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
-                    best_sol, best_score = list(current_sol), current_score
-            else:
-                if temp > 1e-8:
-                    try:
-                        if random.random() < math.exp(-delta_e / temp):
-                            current_sol, current_score = neighbor_sol, neighbor_score
-                    except OverflowError:
-                        pass
+            # Markov Chain 
+            for _ in range(self.markov_chain_length):
+                neighbor_sol = self._get_neighbor(current_sol, problem)
+                neighbor_score = problem.evaluate(neighbor_sol)
+                
+                delta_e = neighbor_score - current_score if is_min else current_score - neighbor_score
+                
+                if delta_e < 0:
+                    current_sol, current_score = neighbor_sol, neighbor_score
+                    if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
+                        best_sol, best_score = list(current_sol), current_score
+                else: 
+                    if temp > 1e-8:
+                        try:
+                            if random.random() < math.exp(-delta_e / temp):
+                                current_sol, current_score = neighbor_sol, neighbor_score
+                        except OverflowError:
+                            pass
             
             temp *= self.cooling_rate
             
@@ -71,7 +75,10 @@ class SimulatedAnnealing(AlgorithmBase):
                 'temperature': temp
             }
 
-            if not problem.is_discrete() and problem.is_goal(best_sol): 
-                break
+            # Adaptive Step Size for Cons 
+            if not problem.is_discrete():
+                self.step_size *= self.step_decay
+                if problem.is_goal(best_sol): 
+                    break
 
         return best_sol, best_score
