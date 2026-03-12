@@ -1,25 +1,27 @@
-from algorithms.classic.hill_climbing import HillClimbing
-from algorithms.classic.tabu_search import TabuSearch
+from algorithms.classic import HillClimbing, TabuSearch
 from algorithms.physic_based.simulated_annealing import SimulatedAnnealing
 from algorithms.biology import PSO, ACO, CuckooOptimization
+from algorithms.evolutionary import GeneticAlgorithm
+from algorithms.human_based.TLBO import TLBO
 
 from problems import *
 
 from utils.evaluator import BenchmarkEngine
 
 def main():
-    ls = HillClimbing(max_iters=300, step_size=0.5)
-    sa = SimulatedAnnealing(max_epochs=300, initial_temp=100.0, cooling_rate=0.95, step_size=0.5)
+    hb = HillClimbing(max_iters=1300, step_size=0.5, num_neighbors=15)
+    sa = SimulatedAnnealing(max_epochs=1000, initial_temp=100.0, cooling_rate=0.99, step_size=0.5, markov_chain_length=20)
     ts = TabuSearch(max_iters=300, tabu_tenure=10, num_neighbors=10, step_size=0.5)
     pso = PSO(num_particles=30, max_iters=300)
     aco = ACO(num_ants=30, max_iters=300)
     co = CuckooOptimization(num_nests=30, max_iters=300)
+    tlbo = TLBO(pop_size=20, max_iters=300)
     
     # Algorithms for continuous problems
-    continuous_algorithms = [ls, sa, ts, pso, aco, co]
+    continuous_algorithms = [hb, tlbo, sa, ts, pso, aco, co]
     
     # Algorithms for discrete problems
-    discrete_algorithms = [ls, sa, ts]
+    discrete_algorithms = [hb, sa, ts]
 
     # Continuous problems
     continuous_problems = [
@@ -49,8 +51,8 @@ def main():
     engine_discrete.run_all()
     
     # Generate reports
-    engine_continuous.generate_reports()
-    engine_discrete.generate_reports()
+    engine_continuous.generate_reports(prefix="continuous")
+    engine_discrete.generate_reports(prefix="discrete")
 
 if __name__ == "__main__":
     main()
