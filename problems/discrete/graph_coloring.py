@@ -64,4 +64,4 @@ class GraphColoring(DiscreteProblemBase):
         raise NotImplementedError("Graph coloring doesn't support returning neighbors-cannot use BFS, DFS, ...")
 
     def get_bounds(self) -> List[Tuple[float, float]]:
-        return [(0, self.size - 1) for _ in self.size]
+        return [(0, self.size - 1) for _ in range(self.size)]

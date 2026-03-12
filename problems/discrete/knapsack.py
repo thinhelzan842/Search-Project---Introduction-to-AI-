@@ -11,7 +11,7 @@ class Knapsack(DiscreteProblemBase):
         self.weights = [random.randint(1, size) for _ in range(self.size)]
 
     def random_solution_generate(self):
-        return [random.randint(0,1) for _ in self.size]
+        return [random.randint(0, 1) for _ in range(self.size)]
 
     def name(self) -> str:
         return "Knapsack"
@@ -40,12 +40,12 @@ class Knapsack(DiscreteProblemBase):
         return False
 
     def is_goal(self, solution) -> bool:
-        pass
+        total_weight = sum(self.weights[i] * v for i, v in enumerate(solution))
+        return total_weight <= self.limit and self.evaluate(solution) > 0
 
     def get_neighbors(self, progress) -> Any:
-        take = not_take = progress
-        take.append(1)
-        not_take.append(0)
+        take     = list(progress) + [1]
+        not_take = list(progress) + [0]
         return (take, not_take)
 
     def get_bounds(self) -> List[Tuple[float, float]]:

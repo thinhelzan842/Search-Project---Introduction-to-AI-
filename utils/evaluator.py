@@ -17,7 +17,7 @@ class BenchmarkEngine:
             print(f"\n{'='*50}\n Problem: {problem.name().upper()}\n{'='*50}")
             
             for algo in self.algorithms:
-                print(f"  ▶ Running: [ {algo.name()} ]...")
+                print(f"  >> Running: [ {algo.name()} ]...")
                 
                 for run_idx in range(self.num_runs):
                     start_time = time.time()
