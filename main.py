@@ -1,4 +1,13 @@
+<<<<<<< HEAD
 from algorithms import *
+=======
+from algorithms.classic import HillClimbing, TabuSearch
+from algorithms.physic_based.simulated_annealing import SimulatedAnnealing
+from algorithms.biology import PSO, ACO, CuckooOptimization
+from algorithms.evolutionary import GeneticAlgorithm
+from algorithms.human_based.TLBO import TLBO
+
+>>>>>>> 16b31c7dd37a3a79de0f204a4e665f30996e9ff8
 from problems import *
 
 from utils.evaluator import BenchmarkEngine
@@ -7,36 +16,52 @@ import webbrowser
 import os
 
 def main():
-    ls = HillClimbing(max_iters=300, step_size=0.5)
-    sa = SimulatedAnnealing(max_epochs=300, initial_temp=100.0, cooling_rate=0.95, step_size=0.5)
+    hb = HillClimbing(max_iters=1300, step_size=0.5, num_neighbors=15)
+    sa = SimulatedAnnealing(max_epochs=1000, initial_temp=100.0, cooling_rate=0.99, step_size=0.5, markov_chain_length=20)
     ts = TabuSearch(max_iters=300, tabu_tenure=10, num_neighbors=10, step_size=0.5)
-
-    ga_cont = GeneticAlgorithm(size=50, gen=150, desire=0.001, crossover_type='multi_point', mutation_type='gaussian')
-    #crossover_type='one_point','multi_point','order'
-    #mutation_type='bit_flip','swap','gaussian'
-    ga_graph = GeneticAlgorithm(size=50, gen=150, desire=None, crossover_type='order', mutation_type='swap')
-    ga_disc = GeneticAlgorithm(size=50, gen=150, desire=None, crossover_type='multi_point', mutation_type='bit_flip')
-    de = DifferentialEvolution(popsize=50, gen=150)
+    pso = PSO(num_particles=30, max_iters=300)
+    aco = ACO(num_ants=30, max_iters=300)
+    co = CuckooOptimization(num_nests=30, max_iters=300)
+    tlbo = TLBO(pop_size=20, max_iters=300)
     
-    algorithms = [ls, sa, ts, de, ga_cont, ga_graph, ga_disc]
+    # Algorithms for continuous problems
+    continuous_algorithms = [hb, tlbo, sa, ts, pso, aco, co]
+    
+    # Algorithms for discrete problems
+    discrete_algorithms = [hb, sa, ts]
 
-    problems = [
+    # Continuous problems
+    continuous_problems = [
         Rastrigin(dim=2, bound=5.12),
-        Sphere(dim=2, bound=5.12),
-        Ackley(dim=2, bound=5.12),
-        Rosenbrock(dim=2, bound=5.12),
-        Griewank(dim=2, bound=5.12),
+        Sphere(dim=2, bound=5.0),
+        Ackley(dim=2, bound=5.0),
+    ]
+    
+    # Discrete problems
+    discrete_problems = [
         TravelingSalesman(size=10, time_limit=2000, cost_limit=2000),
         Knapsack(size=15, limit=40),
         ShortestPath(size=10),
         GraphColoring(size=10)
     ]
 
-    engine_cont = BenchmarkEngine(algorithms=algorithms, problems=problems, num_runs=1)
-    engine_cont.run_all()
-    engine_cont.generate_reports()
-    # Path to the results folder
-    results_folder = "results"
+    # Run continuous benchmark
+    print("=" * 50)
+    print("CONTINUOUS PROBLEMS BENCHMARK")
+    print("=" * 50)
+    engine_continuous = BenchmarkEngine(algorithms=continuous_algorithms, problems=continuous_problems, num_runs=1)
+    engine_continuous.run_all()
+    
+    # Run discrete benchmark
+    print("\n" + "=" * 50)
+    print("DISCRETE PROBLEMS BENCHMARK")
+    print("=" * 50)
+    engine_discrete = BenchmarkEngine(algorithms=discrete_algorithms, problems=discrete_problems, num_runs=1)
+    engine_discrete.run_all()
+    
+    # Generate reports
+    engine_continuous.generate_reports(prefix="continuous")
+    engine_discrete.generate_reports(prefix="discrete")
 
 if __name__ == "__main__":
     main()

@@ -10,19 +10,19 @@ def plot_convergence(histories_dict, title="Convergence Curve", filename="conver
     fig = go.Figure()
     for algo_name, history in histories_dict.items():
         fig.add_trace(go.Scatter(y=history, mode='lines', name=algo_name))
-    fig.update_layout(title=title, xaxis_title="Iterations", yaxis_title="Best Fitness", template="plotly_white")
+    fig.update_layout(title=title, xaxis_title="Iterations", yaxis_title="Best Fitness", template="plotly_white", yaxis_type="log")
     
     # export to HTML file 
     filepath = os.path.join("results", filename)
     fig.write_html(filepath)
-    print(f"   [+] Đã xuất biểu đồ: {filepath}")
+    print(f"   [+] Exported chart: {filepath}")
 
 def plot_performance_bar(scores_dict, title="Performance Comparison", filename="bar_chart.html"):
     algos = list(scores_dict.keys())
     scores = list(scores_dict.values())
     fig = px.bar(x=algos, y=scores, color=algos, title=title, labels={'x': 'Algorithms', 'y': 'Final Best Fitness'})
     fig.write_html(os.path.join("results", filename))
-    print(f"   [+] Đã xuất biểu đồ: results/{filename}")
+    print(f"   [+] Exported chart: results/{filename}")
 
 def plot_3d_landscape(problem, trajectory, algo_name="Algorithm", filename="3d_landscape.html"):
     if problem.is_discrete() or problem.dim != 2:

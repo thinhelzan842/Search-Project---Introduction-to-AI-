@@ -49,7 +49,7 @@ class BenchmarkEngine:
         if not runs: return None
         return min(runs, key=lambda r: r['best_score'])
 
-    def generate_reports(self):
+    def generate_reports(self, prefix="all"):
         
         for problem in self.problems:
             histories, scores, trajectories = {}, {}, {}
@@ -79,4 +79,4 @@ class BenchmarkEngine:
                 best_run = self.get_best_run(a_name, p_name)
                 df.at[a_name, p_name] = best_run['best_score'] if best_run else float('nan')
                 
-        plot_heatmap(np.log1p(df).values, algo_names, prob_names, title="Heatmap (Log Scale)", filename="heatmap_all.html")
+        plot_heatmap(np.log1p(df).values, algo_names, prob_names, title=f"Heatmap (Log Scale) - {prefix.upper()}", filename=f"heatmap_{prefix}.html")

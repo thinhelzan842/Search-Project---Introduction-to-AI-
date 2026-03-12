@@ -3,9 +3,11 @@ import numpy as np
 from core.base import AlgorithmBase
 
 class HillClimbing(AlgorithmBase):
-    def __init__(self, max_iters=1000, step_size=0.1):
+    def __init__(self, max_iters=1300, step_size=0.5, num_neighbors=15, step_decay=0.99):
         self.max_iters = max_iters
         self.step_size = step_size
+        self.num_neighbors = num_neighbors
+        self.step_decay = step_decay
 
     def name(self) -> str:
         return "Hill Climbing"
@@ -30,7 +32,6 @@ class HillClimbing(AlgorithmBase):
         
         best_sol, best_score = list(current_sol), current_score
 
-        # Yield first judge  
         yield {
             'iteration': 0,
             'current_solution': list(current_sol),
@@ -40,16 +41,25 @@ class HillClimbing(AlgorithmBase):
         }
 
         for i in range(self.max_iters):
-            neighbor_sol = self._get_neighbor(current_sol, problem)
-            neighbor_score = problem.evaluate(neighbor_sol)
+            best_candidate_sol = None
+            best_candidate_score = float('inf') if is_min else float('-inf')
+
+            #  Steepest Ascent
+            for _ in range(self.num_neighbors):
+                n_sol = self._get_neighbor(current_sol, problem)
+                n_score = problem.evaluate(n_sol)
+                if (is_min and n_score < best_candidate_score) or (not is_min and n_score > best_candidate_score):
+                    best_candidate_score = n_score
+                    best_candidate_sol = n_sol
             
-            # Compare and Update
-            if (is_min and neighbor_score < current_score) or (not is_min and neighbor_score > current_score):
-                current_sol, current_score = neighbor_sol, neighbor_score
-                
-                # Update Global Best
-                if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
-                    best_sol, best_score = list(current_sol), current_score
+            # Compare and Update 
+            if best_candidate_sol is not None:
+                if (is_min and best_candidate_score < current_score) or (not is_min and best_candidate_score > current_score):
+                    current_sol, current_score = best_candidate_sol, best_candidate_score
+                    
+                    # Update Global Best
+                    if (is_min and current_score < best_score) or (not is_min and current_score > best_score):
+                        best_sol, best_score = list(current_sol), current_score
 
             yield {
                 'iteration': i + 1,
@@ -59,7 +69,10 @@ class HillClimbing(AlgorithmBase):
                 'best_score': best_score
             }
 
-            if not problem.is_discrete() and problem.is_goal(best_sol): 
-                break
+            # Adaptive Step Size for Cons
+            if not problem.is_discrete():
+                self.step_size *= self.step_decay
+                if problem.is_goal(best_sol): 
+                    break
 
         return best_sol, best_score
