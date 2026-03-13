@@ -1,7 +1,9 @@
-plotly
-pandas
-numpy
+plotly>=5.17.0
+matplotlib>=3.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
 random
 abc
 ast
-matplotlib>=3.8.0

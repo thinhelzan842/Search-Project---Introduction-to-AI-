@@ -3,21 +3,22 @@ import numpy as np
 from core.base import AlgorithmBase
 
 class TabuSearch(AlgorithmBase):
-    def __init__(self, max_iters=500, tabu_tenure=10, num_neighbors=20, step_size=0.1):
+    def __init__(self, max_iters=500, tabu_tenure=10, num_neighbors=20, step_size=0.1, step_decay=0.99):
         self.max_iters = max_iters
         self.tabu_tenure = tabu_tenure
         self.num_neighbors = num_neighbors
         self.step_size = step_size
+        self.step_decay = step_decay
 
     def name(self) -> str:
         return "Tabu Search"
 
-    def _get_neighbor(self, current, problem):
+    def _get_neighbor(self, current, problem, current_step_size):
         neighbor = list(current)
         if not problem.is_discrete():
             bounds = problem.get_bounds()
             for i in range(len(neighbor)):
-                val = neighbor[i] + random.gauss(0, self.step_size)
+                val = neighbor[i] + random.gauss(0, current_step_size)
                 neighbor[i] = max(bounds[i][0], min(bounds[i][1], val))
         else:
             if len(neighbor) > 1:
@@ -38,6 +39,8 @@ class TabuSearch(AlgorithmBase):
         
         tabu_list = {self._hash_sol(current_sol, is_discrete): self.tabu_tenure}
 
+        current_step_size = self.step_size
+
         yield {
             'iteration': 0,
             'current_solution': list(current_sol),
@@ -52,7 +55,7 @@ class TabuSearch(AlgorithmBase):
             
             # Survey the neighborhood  
             for _ in range(self.num_neighbors):
-                n_sol = self._get_neighbor(current_sol, problem)
+                n_sol = self._get_neighbor(current_sol, problem, current_step_size)
                 n_score = problem.evaluate(n_sol)
                 n_hash = self._hash_sol(n_sol, is_discrete)
                 
@@ -66,7 +69,7 @@ class TabuSearch(AlgorithmBase):
 
             # Choose the random neighbor not tabu 
             if best_candidate_sol is None:
-                best_candidate_sol = self._get_neighbor(current_sol, problem)
+                best_candidate_sol = self._get_neighbor(current_sol, problem, current_step_size)
                 best_candidate_score = problem.evaluate(best_candidate_sol)
 
             current_sol, current_score = best_candidate_sol, best_candidate_score
@@ -86,7 +89,9 @@ class TabuSearch(AlgorithmBase):
                 'best_score': best_score
             }
 
-            if not problem.is_discrete() and problem.is_goal(best_sol): 
-                break
+            if not problem.is_discrete():
+                current_step_size *= self.step_decay
+                if problem.is_goal(best_sol): 
+                    break
 
         return best_sol, best_score

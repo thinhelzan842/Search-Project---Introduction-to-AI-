@@ -10,9 +10,11 @@ def main():
     # Algorithm instances
     # -----------------------------------------------------------------------
     hb      = HillClimbing(max_iters=1300, step_size=0.5, num_neighbors=15)
+    ts      = TabuSearch(max_iters=1000, tabu_tenure=10, num_neighbors=20, step_size=0.5)
     sa      = SimulatedAnnealing(max_epochs=1000, initial_temp=100.0, cooling_rate=0.99,
                                  step_size=0.5, markov_chain_length=20)
-    ts      = TabuSearch(max_iters=300, tabu_tenure=10, num_neighbors=10, step_size=0.5)
+    gsa = GravitationalSearchAlgorithm(pop_size=30, max_iters=200, G0=100.0, alpha=20.0)
+    hs  = HarmonySearch(max_iters=500, hmcr=0.9, par=0.3, bw=0.1)
     pso     = PSO(num_particles=30, max_iters=300)
     aco     = ACO(num_ants=30, max_iters=300)
     co      = CuckooOptimization(num_nests=30, max_iters=300)
@@ -35,11 +37,12 @@ def main():
     # -----------------------------------------------------------------------
     # 1. CONTINUOUS BENCHMARK
     # -----------------------------------------------------------------------
-    continuous_algorithms = [hb, tlbo, sa, ts, pso, aco, co, ff, abc, de, ga_cont]
+    continuous_algorithms = [hb, tlbo, sa, gsa, hs, ts, pso, aco, co, ff, abc, de, ga_cont]
     continuous_problems   = [
         Rastrigin(dim=2, bound=5.12),
         Sphere(dim=2, bound=5.0),
         Ackley(dim=2, bound=5.0),
+        Rosenbrock(dim=5, bound=5.0),
     ]
 
     print("=" * 60)
@@ -49,6 +52,7 @@ def main():
                                   problems=continuous_problems, num_runs=5)
     engine_cont.run_all()
     engine_cont.generate_reports(prefix="continuous")
+    engine_cont.generate_animations()
 
     # -----------------------------------------------------------------------
     # 2. DISCRETE BENCHMARK  (metaheuristics on combinatorial problems)
@@ -67,6 +71,7 @@ def main():
                                   problems=discrete_problems, num_runs=5)
     engine_disc.run_all()
     engine_disc.generate_reports(prefix="discrete")
+    #engine_cont.generate_animations()
 
     # -----------------------------------------------------------------------
     # 3. GRAPH-SEARCH BENCHMARK
@@ -84,6 +89,7 @@ def main():
                                    problems=[sp_problem], num_runs=5)
     engine_graph.run_all()
     engine_graph.generate_reports(prefix="graph_search")
+   # engine_cont.generate_animations()
 
     print("\n[Done] All HTML reports saved to the results/ directory.")
 

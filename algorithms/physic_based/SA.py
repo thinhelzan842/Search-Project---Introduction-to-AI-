@@ -15,12 +15,12 @@ class SimulatedAnnealing(AlgorithmBase):
     def name(self) -> str:
         return "Simulated Annealing"
 
-    def _get_neighbor(self, current, problem):
+    def _get_neighbor(self, current, problem, current_step_size):
         neighbor = list(current)
         if not problem.is_discrete():
             bounds = problem.get_bounds()
             for i in range(len(neighbor)):
-                val = neighbor[i] + random.gauss(0, self.step_size)
+                val = neighbor[i] + random.gauss(0, current_step_size)
                 neighbor[i] = max(bounds[i][0], min(bounds[i][1], val))
         else:
             if len(neighbor) > 1:
@@ -34,6 +34,8 @@ class SimulatedAnnealing(AlgorithmBase):
         best_sol, best_score = list(current_sol), current_score
         is_min = problem.is_min_optimization()
         temp = self.initial_temp
+        
+        current_step_size = self.step_size
 
         yield {
             'iteration': 0,
@@ -47,7 +49,7 @@ class SimulatedAnnealing(AlgorithmBase):
         for epoch in range(self.max_epochs):
             # Markov Chain 
             for _ in range(self.markov_chain_length):
-                neighbor_sol = self._get_neighbor(current_sol, problem)
+                neighbor_sol = self._get_neighbor(current_sol, problem, current_step_size)
                 neighbor_score = problem.evaluate(neighbor_sol)
                 
                 delta_e = neighbor_score - current_score if is_min else current_score - neighbor_score
@@ -75,9 +77,9 @@ class SimulatedAnnealing(AlgorithmBase):
                 'temperature': temp
             }
 
-            # Adaptive Step Size for Cons 
+            # Adaptive Curent Step Size for Continuous Problems
             if not problem.is_discrete():
-                self.step_size *= self.step_decay
+                current_step_size *= self.step_decay
                 if problem.is_goal(best_sol): 
                     break
 

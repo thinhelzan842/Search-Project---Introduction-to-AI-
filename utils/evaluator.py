@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import pandas as pd
-from utils.visualization import plot_convergence, plot_performance_bar, plot_3d_landscape, plot_heatmap
+from utils.visualization import plot_convergence, plot_performance_bar, plot_3d_landscape, plot_heatmap, plot_animation_2d
 
 class BenchmarkEngine:
     def __init__(self, algorithms, problems, num_runs=1):
@@ -66,8 +66,7 @@ class BenchmarkEngine:
             plot_performance_bar(scores, title=f"Best Fitness - {problem.name()}", filename=f"bar_{safe_name}.html")
             
             if not problem.is_discrete() and problem.dim == 2:
-                algo_to_plot = "Simulated Annealing" if "Simulated Annealing" in trajectories else self.algorithms[0].name()
-                plot_3d_landscape(problem, trajectories[algo_to_plot], algo_to_plot, filename=f"3d_{safe_name}.html")
+                plot_3d_landscape(problem, trajectories, filename=f"3d_{safe_name}.html")
 
         # push out heatmap 
         algo_names = [a.name() for a in self.algorithms]
@@ -80,3 +79,14 @@ class BenchmarkEngine:
                 df.at[a_name, p_name] = best_run['best_score'] if best_run else float('nan')
                 
         plot_heatmap(np.log1p(df).values, algo_names, prob_names, title=f"Heatmap (Log Scale) - {prefix.upper()}", filename=f"heatmap_{prefix}.html")
+
+    def generate_animations(self):
+        for problem in self.problems:
+            if not problem.is_discrete() and problem.dim == 2:
+                safe_prob = problem.name().replace(" ", "_").lower()
+                for algo in self.algorithms:
+                    best_run = self.get_best_run(algo.name(), problem.name())
+                    if best_run:
+                        safe_algo = algo.name().replace(" ", "_").lower()
+                        filename = f"anim_{safe_algo}_{safe_prob}.gif"
+                        plot_animation_2d(problem, best_run['trajectory'], algo.name(), filename)

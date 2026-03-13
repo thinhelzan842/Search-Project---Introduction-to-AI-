@@ -12,12 +12,12 @@ class HillClimbing(AlgorithmBase):
     def name(self) -> str:
         return "Hill Climbing"
 
-    def _get_neighbor(self, current, problem):
+    def _get_neighbor(self, current, problem, current_step_size):
         neighbor = list(current)
         if not problem.is_discrete():
             bounds = problem.get_bounds()
             for i in range(len(neighbor)):
-                val = neighbor[i] + random.gauss(0, self.step_size)
+                val = neighbor[i] + random.gauss(0, current_step_size)
                 neighbor[i] = max(bounds[i][0], min(bounds[i][1], val))
         else:
             if len(neighbor) > 1:
@@ -31,6 +31,8 @@ class HillClimbing(AlgorithmBase):
         is_min = problem.is_min_optimization()
         
         best_sol, best_score = list(current_sol), current_score
+        
+        current_step_size = self.step_size 
 
         yield {
             'iteration': 0,
@@ -44,9 +46,9 @@ class HillClimbing(AlgorithmBase):
             best_candidate_sol = None
             best_candidate_score = float('inf') if is_min else float('-inf')
 
-            #  Steepest Ascent
+            # Steepest Ascent
             for _ in range(self.num_neighbors):
-                n_sol = self._get_neighbor(current_sol, problem)
+                n_sol = self._get_neighbor(current_sol, problem, current_step_size)
                 n_score = problem.evaluate(n_sol)
                 if (is_min and n_score < best_candidate_score) or (not is_min and n_score > best_candidate_score):
                     best_candidate_score = n_score
@@ -69,9 +71,8 @@ class HillClimbing(AlgorithmBase):
                 'best_score': best_score
             }
 
-            # Adaptive Step Size for Cons
             if not problem.is_discrete():
-                self.step_size *= self.step_decay
+                current_step_size *= self.step_decay
                 if problem.is_goal(best_sol): 
                     break
 
