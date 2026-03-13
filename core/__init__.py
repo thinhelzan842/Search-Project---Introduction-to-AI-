@@ -1,3 +1,3 @@
-from .base import AlgorithmBase, DiscreteProblemBase, ContinuousProblemBase, ProblemBase
+from .base import *
 
-__all__ = ['AlgorithmBase', 'ProblemBase', 'ContinuousProblemBase', 'DiscreteProblemBase']
+__all__ = ['AlgorithmBase', 'HasHeuristic', 'ProblemBase', 'HasBounds', 'GeneratesRandom', 'HasNeighbors', 'HasGoal', 'ContinuousProblem', 'DiscreteSearchProblem']

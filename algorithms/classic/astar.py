@@ -1,24 +1,79 @@
 import heapq
-from core.base import AlgorithmBase
-from algorithms.classic._graph_utils import require_graph, require_heuristic
-
+from core import AlgorithmBase, DiscreteSearchProblem
 
 class AStar(AlgorithmBase):
     """
     A* Search.
 
-    Combines UCS (g = actual cost so far) with Greedy BFS (h = admissible
-    heuristic estimate to goal) via f(n) = g(n) + h(n).
-
-    Guarantees optimality when h is admissible (never overestimates true cost).
-    Expands far fewer nodes than plain UCS on most practical graphs.
-
-    Complexity: Time/Space O((V + E) log V), better in practice with a good h.
-
-    Compatible with any problem that exposes:
-        problem.start, problem.goal, problem.adj, problem.weights,
-        problem.evaluate(), problem.heuristic(node) -> float
+    Combines the exact path cost so far g(n) with an admissible 
+    heuristic estimate to the goal h(n) via f(n) = g(n) + h(n).
+    Guarantees optimality when h is admissible (never overestimates).
     """
+
+    def name(self) -> str: 
+        return "A*"
+
+    def run(self, problem):
+        if not isinstance(problem, DiscreteSearchProblem):
+            raise TypeError("A* requires a DiscreteSearchProblem with get_heuristic() implemented.")
+            
+        start = problem.get_initial_state()
+        best_sol, best_score = start, float('inf')
+        iteration, counter = 0, 0
+
+        yield {
+            'iteration': 0, 'current_solution': best_sol, 'current_score': best_score,
+            'best_solution': best_sol, 'best_score': best_score,
+        }
+
+        # Calculate initial costs
+        g_start = problem.evaluate(start)
+        h_start = problem.get_heuristic(start)
+        
+        # heap entry: (f_cost, tiebreaker, g_cost, state)
+        frontier = [(g_start + h_start, counter, g_start, start)]
+        
+        # Helper to hash list-based paths for the visited set
+        def to_hash(state): 
+            return tuple(state) if isinstance(state, list) else state
+            
+        visited = set()
+
+        while frontier:
+            f, _, g, state = heapq.heappop(frontier)
+            h_state = to_hash(state)
+            
+            if h_state in visited: 
+                continue
+            visited.add(h_state)
+            iteration += 1
+
+            if problem.is_goal(state):
+                yield {
+                    'iteration': iteration, 'current_solution': state, 'current_score': g,
+                    'best_solution': state, 'best_score': g,
+                }
+                return  # First pop of goal in A* is guaranteed optimal
+
+            for nb in problem.get_neighbors(state):
+                h_nb = to_hash(nb)
+                if h_nb not in visited:
+                    new_g = problem.evaluate(nb)
+                    new_f = new_g + problem.get_heuristic(nb)
+                    counter += 1
+                    heapq.heappush(frontier, (new_f, counter, new_g, nb))
+
+            yield {
+                'iteration': iteration, 'current_solution': state, 'current_score': g,
+                'best_solution': best_sol, 'best_score': best_score,
+            }
+
+"""import heapq
+from core.base import AlgorithmBase
+from algorithms.classic._graph_utils import require_graph, require_heuristic
+
+
+class AStar(AlgorithmBase):
 
     def name(self) -> str:
         return "A*"
@@ -77,3 +132,4 @@ class AStar(AlgorithmBase):
                 'best_solution':    best_sol,
                 'best_score':       best_score,
             }
+"""

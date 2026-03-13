@@ -1,7 +1,8 @@
 import time
 import numpy as np
 import pandas as pd
-from utils.visualization import plot_convergence, plot_performance_bar, plot_3d_landscape, plot_heatmap
+from core import ContinuousProblem  # Imported for type checking
+from utils.visualization import plot_convergence, plot_performance_bar, plot_3d_landscape, plot_heatmap, plot_animation_2d
 
 class BenchmarkEngine:
     def __init__(self, algorithms, problems, num_runs=1):
@@ -29,6 +30,7 @@ class BenchmarkEngine:
                     
                     for state in algo.run(problem):
                         score = state['best_score']
+                        # Safeguard against infinity for plotting purposes
                         clean_score = score if score != float('inf') else 1e6 
                         history.append(clean_score)
                         trajectory.append(state['best_solution'])
@@ -50,7 +52,6 @@ class BenchmarkEngine:
         return min(runs, key=lambda r: r['best_score'])
 
     def generate_reports(self, prefix="all"):
-        
         for problem in self.problems:
             histories, scores, trajectories = {}, {}, {}
             for algo in self.algorithms:
@@ -60,16 +61,14 @@ class BenchmarkEngine:
                     scores[algo.name()] = best_run['best_score']
                     trajectories[algo.name()] = best_run['trajectory']
 
-            # rename for filenames based on problem name
             safe_name = problem.name().replace(" ", "_").lower()
             plot_convergence(histories, title=f"Convergence - {problem.name()}", filename=f"convergence_{safe_name}.html")
             plot_performance_bar(scores, title=f"Best Fitness - {problem.name()}", filename=f"bar_{safe_name}.html")
             
-            if not problem.is_discrete() and problem.dim == 2:
-                algo_to_plot = "Simulated Annealing" if "Simulated Annealing" in trajectories else self.algorithms[0].name()
-                plot_3d_landscape(problem, trajectories[algo_to_plot], algo_to_plot, filename=f"3d_{safe_name}.html")
+            # Updated check for Continuous 2D problems
+            if isinstance(problem, ContinuousProblem) and hasattr(problem, 'dim') and problem.dim == 2:
+                plot_3d_landscape(problem, trajectories, filename=f"3d_{safe_name}.html")
 
-        # push out heatmap 
         algo_names = [a.name() for a in self.algorithms]
         prob_names = [p.name() for p in self.problems]
         df = pd.DataFrame(index=algo_names, columns=prob_names, dtype=float)
@@ -80,3 +79,15 @@ class BenchmarkEngine:
                 df.at[a_name, p_name] = best_run['best_score'] if best_run else float('nan')
                 
         plot_heatmap(np.log1p(df).values, algo_names, prob_names, title=f"Heatmap (Log Scale) - {prefix.upper()}", filename=f"heatmap_{prefix}.html")
+
+    def generate_animations(self):
+        for problem in self.problems:
+            # Updated check for Continuous 2D problems
+            if isinstance(problem, ContinuousProblem) and hasattr(problem, 'dim') and problem.dim == 2:
+                safe_prob = problem.name().replace(" ", "_").lower()
+                for algo in self.algorithms:
+                    best_run = self.get_best_run(algo.name(), problem.name())
+                    if best_run:
+                        safe_algo = algo.name().replace(" ", "_").lower()
+                        filename = f"anim_{safe_algo}_{safe_prob}.gif"
+                        plot_animation_2d(problem, best_run['trajectory'], algo.name(), filename)

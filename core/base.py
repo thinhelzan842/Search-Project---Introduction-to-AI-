@@ -1,87 +1,60 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Tuple
 
-"""class ProblemBase(ABC):
-    @abstractmethod
-    def evaluate(self, solution) -> float: #scale so that it is always min-optimization
-        pass
+from abc import ABC, abstractmethod
+from typing import TypeVar, Generic, List, Tuple, Iterable
 
-class Boundable(ABC):
-    @abstractmethod
-    def get_bounds(self) -> List[Tuple[float, float]]:
-        pass
+# T represents the State/Solution type (e.g., List[float], int, Tuple[int, int])
+T = TypeVar('T') 
 
-class Searchable(ABC):
-    @abstractmethod
-    def get_neighbors(self, progress) -> Any:
-        pass
-
-    @abstractmethod
-    def get_initial_state(self) -> Any:
-        pass
-
-class AlgorithmBase(ABC):
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
-    @abstractmethod
-    def run(self, problem):
-        pass"""
-
-class ProblemBase(ABC):
+class ProblemBase(ABC, Generic[T]):
     @abstractmethod
     def name(self) -> str:
         pass
     
     @abstractmethod
-    def evaluate(self, solution) -> float: #scale so that it is always min-optimization
+    def evaluate(self, solution: T) -> float: 
+        """Always scaled for min-optimization."""
         pass
 
-    @abstractmethod
-    def is_discrete(self) -> bool:
-        pass
+# --- Mixins/Traits (Capabilities) ---
 
-    @abstractmethod
-    def is_min_optimization(self) -> bool:
-        pass
-
-    @abstractmethod
-    def random_solution_generate(self) -> Any: #assist algorithms like genetic algorithm, etc
-        pass
-
-    @abstractmethod
-    def get_initial_state(self) -> Any:
-        pass
-
-    @abstractmethod
-    def get_neighbors(self, progress) -> Any: #this is for search in discrete problems
-        pass
-
-    @abstractmethod
-    def is_goal(self, solution) -> bool:
-        pass
-
+class HasBounds(ABC):
     @abstractmethod
     def get_bounds(self) -> List[Tuple[float, float]]:
         pass
 
-class ContinuousProblemBase(ProblemBase):
-    def is_discrete(self) -> bool:
-        return False
+class GeneratesRandom(ABC, Generic[T]):
+    @abstractmethod
+    def random_solution_generate(self) -> T:
+        pass
 
-    def get_neighbors(self) -> Any:
-        raise NotImplementedError("Continuous problems don't support returning neighbors")
+class HasNeighbors(ABC, Generic[T]):
+    @abstractmethod
+    def get_neighbors(self, current_state: T) -> Iterable[T]:
+        pass
 
-    def get_initial_state(self) -> Any:
-        return self.random_solution_generate()
-    
-class DiscreteProblemBase(ProblemBase):
-    def is_discrete(self) -> bool:
-        return True
+class HasGoal(ABC, Generic[T]):
+    @abstractmethod
+    def is_goal(self, solution: T) -> bool:
+        pass
 
-    def get_bounds(self) -> Any:
-        raise NotImplementedError("Discrete problems don't support returning bounds")
+class HasHeuristic(ABC, Generic[T]): #admissible heuristic for A* and similar algorithms
+    @abstractmethod
+    def get_heuristic(self, solution: T) -> float:
+        pass
+
+# --- Concrete Base Types ---
+
+class ContinuousProblem(ProblemBase[List[float]], HasBounds, GeneratesRandom[List[float]]):
+    """Algorithms like standard ABC or Continuous GA will expect this interface."""
+    pass
+
+class DiscreteSearchProblem(ProblemBase[T], HasNeighbors[T], HasGoal[T]):
+    """Algorithms like A*, BFS, DFS will expect this interface."""
+    @abstractmethod
+    def get_initial_state(self) -> T:
+        pass
 
 class AlgorithmBase(ABC):
     @abstractmethod

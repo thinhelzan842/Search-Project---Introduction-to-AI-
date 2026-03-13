@@ -1,19 +1,55 @@
-from core.base import AlgorithmBase
+from core import AlgorithmBase, DiscreteSearchProblem
+
+class DFS(AlgorithmBase):
+    def name(self) -> str: return "DFS"
+
+    def run(self, problem):
+        if not isinstance(problem, DiscreteSearchProblem):
+            raise TypeError("DFS requires a DiscreteSearchProblem.")
+            
+        start = problem.get_initial_state()
+        best_sol, best_score = start, float('inf')
+        iteration = 0
+
+        yield {
+            'iteration': 0, 'current_solution': best_sol, 'current_score': best_score,
+            'best_solution': best_sol, 'best_score': best_score,
+        }
+
+        stack = [start]
+        def to_hash(state): return tuple(state) if isinstance(state, list) else state
+        visited = set()
+
+        while stack:
+            state = stack.pop()
+            h_state = to_hash(state)
+            if h_state in visited: continue
+            
+            visited.add(h_state)
+            iteration += 1
+
+            if problem.is_goal(state):
+                cost = problem.evaluate(state)
+                yield {
+                    'iteration': iteration, 'current_solution': state, 'current_score': cost,
+                    'best_solution': state, 'best_score': cost,
+                }
+                return
+
+            for nb in reversed(problem.get_neighbors(state)):
+                if to_hash(nb) not in visited:
+                    stack.append(nb)
+
+            yield {
+                'iteration': iteration, 'current_solution': state, 'current_score': best_score,
+                'best_solution': best_sol, 'best_score': best_score,
+            }
+
+"""from core.base import AlgorithmBase
 from algorithms.classic._graph_utils import require_graph
 
 
 class DFS(AlgorithmBase):
-    """
-    Depth-First Search (DFS).
-
-    Explores as deep as possible before backtracking via a LIFO stack.
-    NOT guaranteed to find the shortest or cheapest path.
-
-    Complexity: Time O(V + E), Space O(V).
-
-    Compatible with any problem that exposes:
-        problem.start, problem.goal, problem.adj, problem.weights, problem.evaluate()
-    """
 
     def name(self) -> str:
         return "DFS"
@@ -67,3 +103,4 @@ class DFS(AlgorithmBase):
                 'best_solution':    best_sol,
                 'best_score':       best_score,
             }
+"""
