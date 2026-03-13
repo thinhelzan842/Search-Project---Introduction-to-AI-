@@ -45,6 +45,8 @@ class GraphColoring(DiscreteProblemBase):
                     return float('inf')  # Conflict found
             unique_clrs.add(color)
         return len(unique_clrs)
+    
+    def get_heuristic(self, solution): pass
 
     def is_discrete(self) -> bool:
         return True
@@ -120,97 +122,44 @@ class Knapsack(DiscreteProblemBase):
 
 
 class ShortestPath(DiscreteProblemBase):
-    """
-    Weighted undirected random graph, start=0, goal=size-1.
-
-    Supports:
-    - Graph-search (BFS/DFS/UCS/GreedyBFS/A*) via
-      .start / .goal / .adj / .weights / .heuristic(node)
-    - Metaheuristic (HC/SA/Tabu) via
-      .random_solution_generate() / .evaluate()
-    """
-
     def __init__(self, size, edge_probability=0.4):
-        import math
-        self.size  = size
-        self.start = 0
-        self.goal  = size - 1
-
-        # 2-D positions for admissible Euclidean heuristic
-        self.positions = [(random.uniform(0, 100), random.uniform(0, 100))
-                         for _ in range(size)]
-
-        # Weight matrix — inf means no edge
-        self.weights = [[float('inf')] * size for _ in range(size)]
-        for i in range(size):
-            self.weights[i][i] = 0
-
-        # Backbone chain 0-1-…-(size-1) to guarantee reachability
-        for i in range(size - 1):
-            w = random.randint(1, 20)
-            self.weights[i][i + 1] = w
-            self.weights[i + 1][i] = w
-
-        # Extra random edges (Erdős-Rényi style)
-        for i in range(size):
-            for j in range(i + 1, size):
-                if self.weights[i][j] == float('inf') and random.random() < edge_probability:
-                    w = random.randint(1, 20)
-                    self.weights[i][j] = w
-                    self.weights[j][i] = w
-
-        # Adjacency list derived from weight matrix
+        self.size = size
         self.adj = [[] for _ in range(size)]
-        for i in range(size):
-            for j in range(size):
-                if i != j and self.weights[i][j] != float('inf'):
+        # Simplified Erdős-Rényi graph generation
+        for i in range(self.size):
+            for j in range(i + 1, self.size):
+                if random.random() < edge_probability:
                     self.adj[i].append(j)
-
-        self._math = math  # cache to avoid repeated import
-
-    def heuristic(self, node: int) -> float:
-        """Admissible Euclidean-distance heuristic scaled to edge costs (÷10)."""
-        x1, y1 = self.positions[node]
-        x2, y2 = self.positions[self.goal]
-        return self._math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) / 10.0
+                    self.adj[j].append(i)
+        # Guarantee at least one valid path from start to end
+        for i in range(self.size - 1):
+            if i + 1 not in self.adj[i]:
+                self.adj[i].append(i + 1)
+                self.adj[i + 1].append(i)
 
     def random_solution_generate(self):
-        """Random walk that tries to reach goal; falls back to guaranteed chain."""
-        for _ in range(15):
-            path    = [self.start]
-            visited = {self.start}
-            node    = self.start
-            for _ in range(self.size * 5):
-                if node == self.goal:
-                    return path
-                choices = [v for v in self.adj[node] if v not in visited]
-                if not choices:
-                    break
-                node = random.choice(choices)
-                path.append(node)
-                visited.add(node)
-        return list(range(self.size))  # chain fallback — always valid
+        path = [0]
+        max_steps = self.size
+        for _ in range(max_steps):
+            current = path[-1]
+            if current == self.size - 1: break
+            neighbors = self.adj[current]
+            possible = [n for n in neighbors if n not in path]
+            if not possible: break
+            path.append(random.choice(possible))
+        return path
 
     def get_initial_state(self):
-        return [self.start]
+        return [0]
 
     def name(self) -> str:
         return "Shortest Path"
 
     def info(self) -> Any:
-        return {"size": self.size, "start": self.start, "goal": self.goal}
+        return {"size": self.size, "graph": self.adj}
 
     def evaluate(self, solution) -> float:
-        """Sum of edge weights; returns inf for invalid / incomplete paths."""
-        if not solution or solution[0] != self.start or solution[-1] != self.goal:
-            return float('inf')
-        total = 0.0
-        for i in range(len(solution) - 1):
-            w = self.weights[solution[i]][solution[i + 1]]
-            if w == float('inf'):
-                return float('inf')
-            total += w
-        return total
+        return len(solution)
 
     def is_discrete(self) -> bool:
         return True
@@ -219,17 +168,18 @@ class ShortestPath(DiscreteProblemBase):
         return True
 
     def is_goal(self, solution) -> bool:
-        return bool(solution) and solution[-1] == self.goal and self.evaluate(solution) < float('inf')
+        return solution[-1] == self.size - 1 if solution else False
 
     def get_neighbors(self, progress) -> Any:
-        if not progress:
-            return []
-        node    = progress[-1]
-        visited = set(progress)
-        return [progress + [v] for v in self.adj[node] if v not in visited]
-
-    def get_bounds(self) -> Any:
-        return [(0, self.size - 1) for _ in range(self.size)]
+        if not progress: return []
+        node = progress[-1]
+        res = []
+        for v in self.adj[node]:
+            if v not in progress:
+                temp = progress.copy()
+                temp.append(v)
+                res.append(temp)
+        return res
 
 
 class TravelingSalesman(DiscreteProblemBase):

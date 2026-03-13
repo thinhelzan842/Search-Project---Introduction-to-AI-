@@ -22,7 +22,8 @@ class Ackley(ContinuousProblemBase):
         sum_sq = np.sum(x**2)
         sum_cos = np.sum(np.cos(self.c * x))
         return -self.a * np.exp(-self.b * np.sqrt(sum_sq / self.dim)) - np.exp(sum_cos / self.dim) + self.a + np.e
-
+    
+    def get_heuristic(self, solution): pass
     def is_discrete(self) -> bool: return False
     def is_min_optimization(self) -> bool: return True
     def is_goal(self, solution) -> bool: return self.evaluate(solution) <= 1e-6
@@ -45,7 +46,8 @@ class Griewank(ContinuousProblemBase):
         i = np.arange(1, self.dim + 1)
         prod_term = np.prod(np.cos(x / np.sqrt(i)))
         return sum_term - prod_term + 1.0
-
+    
+    def get_heuristic(self, solution): pass
     def is_discrete(self) -> bool: return False
     def is_min_optimization(self) -> bool: return True
     def is_goal(self, solution) -> bool: return self.evaluate(solution) <= 1e-6
@@ -65,7 +67,8 @@ class Rastrigin(ContinuousProblemBase):
     def evaluate(self, solution) -> float:
         x = np.asarray(solution)
         return 10 * self.dim + np.sum(x**2 - 10 * np.cos(2 * np.pi * x))
-
+    
+    def get_heuristic(self, solution): pass
     def is_discrete(self) -> bool: return False
     def is_min_optimization(self) -> bool: return True
     def is_goal(self, solution) -> bool: return self.evaluate(solution) <= 1e-6
@@ -85,7 +88,8 @@ class Rosenbrock(ContinuousProblemBase):
     def evaluate(self, solution) -> float:
         x = np.asarray(solution)
         return np.sum(100.0 * (x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
-
+    
+    def get_heuristic(self, solution): pass
     def is_discrete(self) -> bool: return False
     def is_min_optimization(self) -> bool: return True
     def is_goal(self, solution) -> bool: return self.evaluate(solution) <= 1e-6
@@ -104,7 +108,8 @@ class Sphere(ContinuousProblemBase):
 
     def evaluate(self, solution) -> float:
         return float(np.sum(np.square(np.asarray(solution))))
-
+    
+    def get_heuristic(self, solution): pass
     def is_discrete(self) -> bool: return False
     def is_min_optimization(self) -> bool: return True
     def is_goal(self, solution) -> bool: return self.evaluate(solution) <= 1e-6
