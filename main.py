@@ -37,7 +37,7 @@ def main():
     # -----------------------------------------------------------------------
     # 1. CONTINUOUS BENCHMARK (num_runs = 30)
     # -----------------------------------------------------------------------
-    continuous_algorithms = [hb, tlbo, sa, gsa, hs, ts, pso, aco, co, ff, abc, de, ga_cont]
+    continuous_algorithms = [hb, tlbo, sa, gsa, hs, ts, pso, co, ff, abc, de, ga_cont]
     continuous_problems   = [
         Rastrigin(dim=2, bound=5.12), Sphere(dim=2, bound=5.0),
         Ackley(dim=2, bound=5.0), Rosenbrock(dim=2, bound=5.0),
@@ -55,7 +55,7 @@ def main():
     # -----------------------------------------------------------------------
     # 2. DISCRETE BENCHMARK
     # -----------------------------------------------------------------------
-    discrete_algorithms = [hb, sa, ts, ga_disc]
+    discrete_algorithms = [hb, sa, ts, ga_disc, aco]
     discrete_problems   = [
         TravelingSalesman(size=10, time_limit=2000, cost_limit=2000),
         Knapsack(size=15, limit=40), GraphColoring(size=10)
@@ -72,7 +72,7 @@ def main():
     # -----------------------------------------------------------------------
     # 3. GRAPH-SEARCH BENCHMARK
     # -----------------------------------------------------------------------
-    graph_algorithms = [bfs, dfs, ucs, greedy, astar, hb, sa, ts]
+    graph_algorithms = [bfs, dfs, ucs, greedy, astar, aco]
     sp_problem       = ShortestPath(size=12)
 
     print("\n" + "=" * 60)

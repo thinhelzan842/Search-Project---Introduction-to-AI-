@@ -30,49 +30,51 @@ class BenchmarkEngine:
                 print(f"  >> Running: [ {algo.name()} ]...")
                 
                 for run_idx in range(self.num_runs):
-                    # Bắt đầu đo lường Space Complexity
-                    tracemalloc.start()
-                    start_time = time.time()
-                    
-                    history = []
-                    trajectory = []
-                    best_score_final = None
-                    best_sol_final = None
-                    diversity_history = []
-                    
-                    for state in algo.run(problem):
-                        score = state['best_score']
-                        # Safeguard against infinity for plotting purposes
-                        clean_score = score if score != float('inf') else 1e6 
-                        history.append(clean_score)
-                        trajectory.append(state['best_solution'])
-                        best_score_final = clean_score
-                        best_sol_final = state['best_solution']
+                    try:
+                        # Bắt đầu đo lường Space Complexity
+                        tracemalloc.start()
+                        start_time = time.time()
                         
-                        if 'population_scores' in state:
-                            # Đo độ phân tán (std) của điểm số trong quần thể
-                            diversity = np.std(state['population_scores'])
-                            diversity_history.append(diversity)
+                        history = []
+                        trajectory = []
+                        best_score_final = None
+                        diversity_history = []
                         
-                    exec_time = time.time() - start_time
-                    
-                    # Lấy thông tin bộ nhớ và dừng theo dõi
-                    current_mem, peak_mem = tracemalloc.get_traced_memory()
-                    tracemalloc.stop()
-                    peak_mem_kb = peak_mem / 1024.0
-                    
-                    # Update lại dict kết quả
-                    run_result = {
-                        'algo': algo.name(), 'problem': problem.name(),
-                        'best_score': best_score_final, 'history': history,
-                        'trajectory': trajectory, 'time': exec_time,
-                        'space_peak_kb': peak_mem_kb
-                    }
-                    if diversity_history:
-                        run_result['diversity_history'] = diversity_history
-                    self.results.append(run_result)
-                    
-                    print(f"    - Num {run_idx+1:02d}/{self.num_runs} | Loss: {best_score_final:.4e} | Time: {exec_time:.3f}s | Space: {peak_mem_kb:.2f} KB")
+                        # Chạy thuật toán
+                        for state in algo.run(problem):
+                            score = state['best_score']
+                            clean_score = score if score != float('inf') else 1e6 
+                            history.append(clean_score)
+                            trajectory.append(state['best_solution'])
+                            best_score_final = clean_score
+                            
+                            if 'population_scores' in state:
+                                diversity = np.std(state['population_scores'])
+                                diversity_history.append(diversity)
+                            
+                        exec_time = time.time() - start_time
+                        current_mem, peak_mem = tracemalloc.get_traced_memory()
+                        tracemalloc.stop()
+                        peak_mem_kb = peak_mem / 1024.0
+                        
+                        run_result = {
+                            'algo': algo.name(), 'problem': problem.name(),
+                            'best_score': best_score_final, 'history': history,
+                            'trajectory': trajectory, 'time': exec_time,
+                            'space_peak_kb': peak_mem_kb
+                        }
+                        if diversity_history:
+                            run_result['diversity_history'] = diversity_history
+                        self.results.append(run_result)
+                        
+                        print(f"    - Num {run_idx+1:02d}/{self.num_runs} | Loss: {best_score_final:.4e} | Time: {exec_time:.3f}s")
+
+                    except Exception as e:
+                        # Nếu lỗi, dừng đo bộ nhớ, in thông báo và tiếp tục run/algo khác
+                        if tracemalloc.is_tracing():
+                            tracemalloc.stop()
+                        print(f"    [ERROR] Algorithm {algo.name()} failed on {problem.name()}: {e}")
+                        continue
 
     def get_best_run(self, algo_name, problem_name):
         runs = [r for r in self.results if r['algo'] == algo_name and r['problem'] == problem_name]
@@ -108,19 +110,17 @@ class BenchmarkEngine:
             plot_boxplot_performance(final_scores, title=f"Robustness (Boxplot) - {problem.name()}", filename=f"boxplot_{safe_name}.html")
             
             # Vẽ Exploration/Exploitation bằng cách tính TRUNG BÌNH các lần chạy
+            # Fix lỗi tính Diversity trung bình khi các lần chạy có độ dài khác nhau
             for algo_name, div_runs in all_diversities.items():
-                if len(div_runs) > 0:  
-                    # Đảm bảo các mảng có cùng độ dài trước khi tính trung bình (phòng trường hợp thuật toán dừng sớm)
+                if len(div_runs) > 0:
+                    # Truncate về độ dài ngắn nhất để đảm bảo tính Explore/Exploit là thực tế cho đến khi kết thúc
                     min_len = min(len(r) for r in div_runs)
                     truncated_runs = [r[:min_len] for r in div_runs]
                     avg_div_history = np.mean(truncated_runs, axis=0)
                     
                     safe_algo = algo_name.replace(" ", "_").lower()
-                    plot_exploration_exploitation(
-                        avg_div_history, 
-                        title=f"{algo_name}: Explore vs Exploit - {problem.name()}", 
-                        filename=f"ee_{safe_algo}_{safe_name}.html"
-                    )
+                    plot_exploration_exploitation(avg_div_history, title=f"{algo_name}: Explore vs Exploit - {problem.name()}", 
+                                                   filename=f"ee_{safe_algo}_{safe_name}.html")
             
             print(f"\n[STATISTICS] Hypothesis Testing for {problem.name()}:")
             if final_scores:

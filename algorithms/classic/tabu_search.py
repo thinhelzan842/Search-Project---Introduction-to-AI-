@@ -16,13 +16,26 @@ class TabuSearch(AlgorithmBase):
                 val = neighbor[i] + random.gauss(0, current_step_size)
                 neighbor[i] = max(bounds[i][0], min(bounds[i][1], val))
             return neighbor
+            
         elif isinstance(problem, DiscreteSearchProblem):
-            # FIX: Sử dụng swap (hoán vị) thay vì sinh đường đi cho bài toán discrete
             neighbor = list(current)
-            if len(neighbor) > 1:
+            if not neighbor:
+                return neighbor
+                
+            # Copy logic phân loại từ SA.py sang
+            is_binary = all(x in (0, 1) for x in neighbor)
+            
+            if is_binary:
+                # Đột biến lật bit cho Knapsack
+                idx = random.randrange(len(neighbor))
+                neighbor[idx] = 1 - neighbor[idx]
+            elif len(neighbor) > 1:
+                # Đột biến hoán vị cho TSP, Graph Coloring
                 idx1, idx2 = random.sample(range(len(neighbor)), 2)
                 neighbor[idx1], neighbor[idx2] = neighbor[idx2], neighbor[idx1]
+                
             return neighbor
+            
         raise TypeError("Unsupported problem type.")
 
     def _hash_sol(self, sol, is_cont):

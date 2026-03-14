@@ -9,17 +9,27 @@ from plotly.subplots import make_subplots
 
 os.makedirs("results", exist_ok=True)
 
-# --- 1. HỘI TỤ ROBUST (MEAN ± STD) ---
+# --- 1. HỘI TỤ ROBUST (Đã sửa lỗi Inhomogeneous Shape) ---
 def plot_convergence_robust(histories_dict, title="Convergence (Mean ± Std)", filename="convergence.html"):
     fig = go.Figure()
     for algo_name, runs in histories_dict.items():
         if not runs: continue
-        runs_array = np.array(runs)
-        mean_hist = np.mean(runs_array, axis=0) + 1e-10
+        
+        # FIX: Tìm chiều dài lớn nhất và bù (padding) giá trị cuối cho các lần chạy ngắn hơn
+        max_len = max(len(r) for r in runs)
+        padded_runs = []
+        for r in runs:
+            if len(r) < max_len:
+                padded_runs.append(r + [r[-1]] * (max_len - len(r)))
+            else:
+                padded_runs.append(r)
+        
+        runs_array = np.array(padded_runs)
+        mean_hist = np.mean(runs_array, axis=0) + 1e-12
         std_hist = np.std(runs_array, axis=0)
         
         upper_bound = mean_hist + std_hist
-        lower_bound = np.clip(mean_hist - std_hist, 1e-10, None)
+        lower_bound = np.clip(mean_hist - std_hist, 1e-12, None)
         x_vals = list(range(len(mean_hist)))
 
         fig.add_trace(go.Scatter(
@@ -32,9 +42,10 @@ def plot_convergence_robust(histories_dict, title="Convergence (Mean ± Std)", f
         ))
         fig.add_trace(go.Scatter(x=x_vals, y=mean_hist, mode='lines', name=algo_name))
 
-    fig.update_layout(title=title, template="plotly_white", yaxis_type="log", xaxis_title="Iterations", yaxis_title="Fitness")
+    fig.update_layout(title=title, template="plotly_white", yaxis_type="log", 
+                      xaxis_title="Iterations", yaxis_title="Fitness (Log Scale)")
     fig.write_html(os.path.join("results", filename))
-
+        
 # --- 2. BOXPLOT (QUALITY & ROBUSTNESS) ---
 def plot_boxplot_performance(scores_dict, title="Robustness & Quality (Boxplot)", filename="boxplot.html"):
     import pandas as pd
@@ -46,7 +57,7 @@ def plot_boxplot_performance(scores_dict, title="Robustness & Quality (Boxplot)"
     fig.update_layout(template="plotly_white", yaxis_type="log")
     fig.write_html(os.path.join("results", filename))
 
-# --- 3. EXPLORATION VS EXPLOITATION ---
+# --- 3. EXPLORATION VS EXPLOITATION (Đã sửa lỗi đồng bộ độ dài) ---
 def plot_exploration_exploitation(diversity_history, title="Exploration vs Exploitation", filename="explore_exploit.html"):
     if len(diversity_history) == 0: return
     div_array = np.array(diversity_history)
@@ -58,7 +69,8 @@ def plot_exploration_exploitation(diversity_history, title="Exploration vs Explo
     x = list(range(len(div_array)))
     fig.add_trace(go.Scatter(x=x, y=exploration, stackgroup='one', name='Exploration (%)', line=dict(color='cyan')))
     fig.add_trace(go.Scatter(x=x, y=exploitation, stackgroup='one', name='Exploitation (%)', line=dict(color='royalblue')))
-    fig.update_layout(title=title, template="plotly_white", yaxis_range=[0, 100])
+    fig.update_layout(title=title, template="plotly_white", yaxis_range=[0, 100],
+                      xaxis_title="Iterations", yaxis_title="Percentage (%)")
     fig.write_html(os.path.join("results", filename))
 
 # --- 4. 3D LANDSCAPE ---
