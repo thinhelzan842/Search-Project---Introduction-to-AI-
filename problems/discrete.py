@@ -141,8 +141,12 @@ class ShortestPath(DiscreteSearchProblem[List[int]]):
     def info(self) -> Any: return {"size": self.size, "graph": self.adj}
 
     def evaluate(self, solution: List[int]) -> float:
-        # Represents g(n): cost of the path so far (number of edges)
-        return float(len(solution) - 1 if solution else 0.0)
+        if not solution: return 0.0
+        # Đảm bảo các node liền kề thực sự có cạnh nối với nhau
+        for i in range(len(solution) - 1):
+            if solution[i + 1] not in self.adj[solution[i]]:
+                return float('inf') # Phạt nặng nếu là đường ảo
+        return float(len(solution) - 1)
 
     def is_goal(self, solution: List[int]) -> bool:
         return solution[-1] == self.size - 1 if solution else False

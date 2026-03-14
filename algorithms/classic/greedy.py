@@ -4,6 +4,15 @@ from core import AlgorithmBase, DiscreteSearchProblem
 class GreedyBFS(AlgorithmBase):
     def name(self) -> str: return "Greedy BFS"
 
+    def _get_state_key(self, state, problem):
+        if isinstance(state, list) and hasattr(problem, 'name'):
+            p_name = problem.name().lower()
+            if "shortest path" in p_name:
+                return state[-1] if state else ()
+            if "traveling salesman" in p_name:
+                return (state[-1], frozenset(state)) if state else ()
+        return tuple(state) if isinstance(state, list) else state
+
     def run(self, problem):
         if not isinstance(problem, DiscreteSearchProblem):
             raise TypeError("Greedy BFS requires a DiscreteSearchProblem.")
@@ -12,22 +21,20 @@ class GreedyBFS(AlgorithmBase):
         best_sol, best_score = start, float('inf')
         iteration, counter = 0, 0
 
+        frontier = [(problem.get_heuristic(start), counter, start)]
+        visited = set()
+
         yield {
             'iteration': 0, 'current_solution': best_sol, 'current_score': best_score,
             'best_solution': best_sol, 'best_score': best_score,
         }
 
-        # heap entry: (h_cost, tiebreaker, state)
-        frontier = [(problem.get_heuristic(start), counter, start)]
-        def to_hash(state): return tuple(state) if isinstance(state, list) else state
-        visited = set()
-
         while frontier:
             _, _, state = heapq.heappop(frontier)
-            h_state = to_hash(state)
+            state_key = self._get_state_key(state, problem)
             
-            if h_state in visited: continue
-            visited.add(h_state)
+            if state_key in visited: continue
+            visited.add(state_key)
             iteration += 1
 
             if problem.is_goal(state):
@@ -39,8 +46,11 @@ class GreedyBFS(AlgorithmBase):
                 return
 
             for nb in problem.get_neighbors(state):
-                h_nb = to_hash(nb)
-                if h_nb not in visited:
+                if problem.evaluate(nb) == float('inf'):
+                    continue
+                    
+                nb_key = self._get_state_key(nb, problem)
+                if nb_key not in visited:
                     counter += 1
                     heapq.heappush(frontier, (problem.get_heuristic(nb), counter, nb))
 
@@ -48,68 +58,3 @@ class GreedyBFS(AlgorithmBase):
                 'iteration': iteration, 'current_solution': state, 'current_score': best_score,
                 'best_solution': best_sol, 'best_score': best_score,
             }
-
-"""import heapq
-from core.base import AlgorithmBase
-from algorithms.classic._graph_utils import require_graph, require_heuristic
-
-
-class GreedyBFS(AlgorithmBase):
-
-    def name(self) -> str:
-        return "Greedy BFS"
-
-    def run(self, problem):
-        require_graph(problem)
-        require_heuristic(problem, self.name())
-        start, goal = problem.start, problem.goal
-        h          = problem.heuristic
-        best_sol   = [start]
-        best_score = float('inf')
-        iteration  = 0
-        counter    = 0
-
-        yield {
-            'iteration':        0,
-            'current_solution': best_sol,
-            'current_score':    best_score,
-            'best_solution':    best_sol,
-            'best_score':       best_score,
-        }
-
-        # heap entry: (h(n), counter, node, path)
-        frontier = [(h(start), counter, start, [start])]
-        visited  = set()
-
-        while frontier:
-            _, _, node, path = heapq.heappop(frontier)
-            if node in visited:
-                continue
-            visited.add(node)
-            iteration += 1
-
-            if node == goal:
-                cost = problem.evaluate(path)
-                best_sol, best_score = path, cost
-                yield {
-                    'iteration':        iteration,
-                    'current_solution': path,
-                    'current_score':    cost,
-                    'best_solution':    best_sol,
-                    'best_score':       best_score,
-                }
-                return
-
-            for nb in problem.adj[node]:
-                if nb not in visited:
-                    counter += 1
-                    heapq.heappush(frontier, (h(nb), counter, nb, path + [nb]))
-
-            yield {
-                'iteration':        iteration,
-                'current_solution': path,
-                'current_score':    best_score,
-                'best_solution':    best_sol,
-                'best_score':       best_score,
-            }
-"""

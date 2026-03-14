@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from core import AlgorithmBase, ContinuousProblem
 
 class CuckooOptimization(AlgorithmBase):
@@ -29,10 +30,17 @@ class CuckooOptimization(AlgorithmBase):
         for iteration in range(self.max_iters):
             for i in range(self.num_nests):
                 new_nest = nests[i].copy()
-                levy = np.random.normal(0, 1, dim)
+                # Thuật toán Mantegna tạo Levy Flight
+                beta = 1.5
+                sigma = (math.gamma(1 + beta) * math.sin(math.pi * beta / 2) / 
+                        (math.gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2))) ** (1 / beta)
+                u = np.random.normal(0, sigma, dim)
+                v = np.random.normal(0, 1, dim)
+                step = u / (np.abs(v) ** (1 / beta))
                 
                 for d in range(dim):
-                    new_nest[d] = np.clip(nests[i][d] + self.step_size * levy[d], bounds[d][0], bounds[d][1])
+                    # Sử dụng step (Levy) thay vì Gaussian
+                    new_nest[d] = np.clip(nests[i][d] + self.step_size * step[d], bounds[d][0], bounds[d][1])
                 
                 new_fitness = problem.evaluate(new_nest)
                 if new_fitness < fitness[i]:
