@@ -1,4 +1,5 @@
 import time
+import tracemalloc
 import numpy as np
 import pandas as pd
 from core import ContinuousProblem  # Imported for type checking
@@ -10,6 +11,7 @@ from utils.visualization import (
     plot_heatmap, 
     plot_animation_2d
 )
+import scipy.stats as stats
 
 class BenchmarkEngine:
     def __init__(self, algorithms, problems, num_runs=1):
@@ -28,12 +30,15 @@ class BenchmarkEngine:
                 print(f"  >> Running: [ {algo.name()} ]...")
                 
                 for run_idx in range(self.num_runs):
+                    # Bắt đầu đo lường Space Complexity
+                    tracemalloc.start()
                     start_time = time.time()
                     
                     history = []
                     trajectory = []
                     best_score_final = None
                     best_sol_final = None
+                    diversity_history = []
                     
                     for state in algo.run(problem):
                         score = state['best_score']
@@ -43,25 +48,31 @@ class BenchmarkEngine:
                         trajectory.append(state['best_solution'])
                         best_score_final = clean_score
                         best_sol_final = state['best_solution']
+                        
                         if 'population_scores' in state:
                             # Đo độ phân tán (std) của điểm số trong quần thể
-                            if 'diversity_history' not in locals(): diversity_history = []
                             diversity = np.std(state['population_scores'])
                             diversity_history.append(diversity)
                         
                     exec_time = time.time() - start_time
                     
+                    # Lấy thông tin bộ nhớ và dừng theo dõi
+                    current_mem, peak_mem = tracemalloc.get_traced_memory()
+                    tracemalloc.stop()
+                    peak_mem_kb = peak_mem / 1024.0
+                    
                     # Update lại dict kết quả
                     run_result = {
                         'algo': algo.name(), 'problem': problem.name(),
                         'best_score': best_score_final, 'history': history,
-                        'trajectory': trajectory, 'time': exec_time
+                        'trajectory': trajectory, 'time': exec_time,
+                        'space_peak_kb': peak_mem_kb
                     }
-                    if 'diversity_history' in locals():
+                    if diversity_history:
                         run_result['diversity_history'] = diversity_history
                     self.results.append(run_result)
                     
-                    print(f"    - Num {run_idx+1}/{self.num_runs} | Loss: {best_score_final:.4f} | Time: {exec_time:.3f}s")
+                    print(f"    - Num {run_idx+1:02d}/{self.num_runs} | Loss: {best_score_final:.4e} | Time: {exec_time:.3f}s | Space: {peak_mem_kb:.2f} KB")
 
     def get_best_run(self, algo_name, problem_name):
         runs = [r for r in self.results if r['algo'] == algo_name and r['problem'] == problem_name]
@@ -73,7 +84,7 @@ class BenchmarkEngine:
             all_histories = {algo.name(): [] for algo in self.algorithms}
             final_scores = {algo.name(): [] for algo in self.algorithms}
             trajectories = {}
-            avg_diversities = {algo.name(): [] for algo in self.algorithms}
+            all_diversities = {algo.name(): [] for algo in self.algorithms}
             
             # Gom dữ liệu từ TẤT CẢ các lần chạy
             for run in self.results:
@@ -86,9 +97,9 @@ class BenchmarkEngine:
                     if algo_name not in trajectories or run['best_score'] < min(final_scores[algo_name]):
                         trajectories[algo_name] = run['trajectory']
                         
-                    # Lấy diversity history (nếu thuật toán có trả về population_scores)
+                    # Thu thập toàn bộ diversity history để tính trung bình
                     if 'diversity_history' in run:
-                        avg_diversities[algo_name] = run['diversity_history']
+                        all_diversities[algo_name].append(run['diversity_history'])
 
             safe_name = problem.name().replace(" ", "_").lower()
             
@@ -96,13 +107,36 @@ class BenchmarkEngine:
             plot_convergence_robust(all_histories, title=f"Convergence - {problem.name()}", filename=f"convergence_{safe_name}.html")
             plot_boxplot_performance(final_scores, title=f"Robustness (Boxplot) - {problem.name()}", filename=f"boxplot_{safe_name}.html")
             
-            # Vẽ Exploration/Exploitation cho 1 thuật toán đại diện (VD: ACO)
-            if "ACO" in avg_diversities and len(avg_diversities["ACO"]) > 0:
-                plot_exploration_exploitation(avg_diversities["ACO"], title=f"ACO: Explore vs Exploit - {problem.name()}", filename=f"ee_aco_{safe_name}.html")
-
+            # Vẽ Exploration/Exploitation bằng cách tính TRUNG BÌNH các lần chạy
+            for algo_name, div_runs in all_diversities.items():
+                if len(div_runs) > 0:  
+                    # Đảm bảo các mảng có cùng độ dài trước khi tính trung bình (phòng trường hợp thuật toán dừng sớm)
+                    min_len = min(len(r) for r in div_runs)
+                    truncated_runs = [r[:min_len] for r in div_runs]
+                    avg_div_history = np.mean(truncated_runs, axis=0)
+                    
+                    safe_algo = algo_name.replace(" ", "_").lower()
+                    plot_exploration_exploitation(
+                        avg_div_history, 
+                        title=f"{algo_name}: Explore vs Exploit - {problem.name()}", 
+                        filename=f"ee_{safe_algo}_{safe_name}.html"
+                    )
+            
+            print(f"\n[STATISTICS] Hypothesis Testing for {problem.name()}:")
+            if final_scores:
+                mean_scores = {algo: np.mean(scores) for algo, scores in final_scores.items() if scores}
+                if mean_scores:
+                    best_algo = min(mean_scores, key=mean_scores.get)
+                    print(f"  Best Algorithm (Mean): {best_algo} (Mean = {mean_scores[best_algo]:.4e})")
+                    
+                    for algo, scores in final_scores.items():
+                        if algo != best_algo and scores:
+                            stat, p_val = stats.ranksums(final_scores[best_algo], scores)
+                            significance = "***" if p_val < 0.001 else "**" if p_val < 0.01 else "*" if p_val < 0.05 else "ns"
+                            print(f"    vs {algo:<25}: p-value = {p_val:.4e} [{significance}]")
+            
     def generate_animations(self):
         for problem in self.problems:
-            # Updated check for Continuous 2D problems
             if isinstance(problem, ContinuousProblem) and hasattr(problem, 'dim') and problem.dim == 2:
                 safe_prob = problem.name().replace(" ", "_").lower()
                 for algo in self.algorithms:
