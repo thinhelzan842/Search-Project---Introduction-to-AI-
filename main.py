@@ -40,11 +40,11 @@ def main():
     # -----------------------------------------------------------------------
     continuous_algorithms = [hb, tlbo, sa, gsa, hs, ts, pso, aco, co, ff, abc, de, ga_cont, es]
     continuous_problems   = [
-        #Rastrigin(dim=2, bound=5.12),
-        Sphere(dim=2, bound=5.0)
-        #Ackley(dim=2, bound=5.0)
-        #Rosenbrock(dim=2, bound=5.0),
-        #Griewank(dim=2, bound=5.0)
+        Rastrigin(dim=2, bound=5.12),
+        Sphere(dim=2, bound=5.0),
+        Ackley(dim=2, bound=5.0),
+        Rosenbrock(dim=2, bound=5.0),
+        Griewank(dim=2, bound=5.0)
     ]
 
     print("=" * 60)
