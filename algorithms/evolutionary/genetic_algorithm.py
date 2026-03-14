@@ -69,7 +69,7 @@ class GeneticAlgorithm(AlgorithmBase):
         best_sol, best_scr = self.pop[best_idx], scr_list[best_idx]
 
         yield {
-            'generation': 0, 'current_solution': self.pop.copy(), 'current_score': scr_list.copy(),
+            'iteration': 0, 'current_solution': self.pop.copy(), 'current_score': scr_list.copy(),
             'best_solution': best_sol, 'best_score': best_scr
         }
 
@@ -108,7 +108,7 @@ class GeneticAlgorithm(AlgorithmBase):
             gen += 1
 
             yield {
-                'generation': gen, 'current_solution': self.pop.copy(), 'current_score': scr_list.copy(),
+                'iteration': gen, 'current_solution': self.pop.copy(), 'current_score': scr_list.copy(),
                 'best_solution': best_sol, 'best_score': best_scr
             }
 

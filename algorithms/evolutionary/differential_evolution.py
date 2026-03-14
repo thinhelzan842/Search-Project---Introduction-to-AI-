@@ -22,7 +22,7 @@ class DifferentialEvolution(AlgorithmBase):
         best_sol, best_scr = pop[best_idx].copy(), fitness[best_idx]
         
         yield {
-            'generation': 0, 'population': pop.copy(), 'fitness': fitness.copy(),
+            'iteration': 0, 'current_solution': pop.copy(), 'current_score': fitness.copy(),
             'best_solution': best_sol.copy(), 'best_score': best_scr
         }
 
@@ -45,7 +45,7 @@ class DifferentialEvolution(AlgorithmBase):
                         best_scr, best_sol = f, trial.copy()
                         
             yield {
-                'generation': gen + 1, 'population': pop.copy(), 'fitness': fitness.copy(),
+                'iteration': gen + 1, 'current_solution': pop.copy(), 'current_score': fitness.copy(),
                 'best_solution': best_sol.copy(), 'best_score': best_scr
             }
 

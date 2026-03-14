@@ -22,6 +22,7 @@ def main():
     ff      = FireflyAlgorithm(popsize=20, gen=200)
     abc     = ArtificialBeeColony(popsize=20, gen=200)
     de      = DifferentialEvolution(popsize=20, gen=200)
+    es      = EvolutionStrategies(max_iters=200)
     ga_cont = GeneticAlgorithm(size=20, gen=200, desire=0.001,
                                crossover_type='multi_point', mutation_type='gaussian')
     ga_disc = GeneticAlgorithm(size=20, gen=200, desire=None,
@@ -37,13 +38,13 @@ def main():
     # -----------------------------------------------------------------------
     # 1. CONTINUOUS BENCHMARK
     # -----------------------------------------------------------------------
-    continuous_algorithms = [hb, tlbo, sa, gsa, hs, ts, pso, aco, co, ff, abc, de, ga_cont]
+    continuous_algorithms = [hb, tlbo, sa, gsa, hs, ts, pso, aco, co, ff, abc, de, ga_cont, es]
     continuous_problems   = [
-        Rastrigin(dim=2, bound=5.12),
-        Sphere(dim=2, bound=5.0),
-        Ackley(dim=2, bound=5.0),
-        Rosenbrock(dim=2, bound=5.0),
-        Griewank(dim=2, bound=5.0)
+        #Rastrigin(dim=2, bound=5.12),
+        Sphere(dim=2, bound=5.0)
+        #Ackley(dim=2, bound=5.0)
+        #Rosenbrock(dim=2, bound=5.0),
+        #Griewank(dim=2, bound=5.0)
     ]
 
     print("=" * 60)

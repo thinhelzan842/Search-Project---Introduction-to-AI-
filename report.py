@@ -8,34 +8,44 @@ def load_data(filepath):
     with open(filepath, 'rb') as f:
         return pickle.load(f)
 
+
 def generate_statistical_report(results, problem_name):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"STATISTICAL REPORT & ROBUSTNESS: {problem_name.upper()}")
-    print(f"{'='*60}")
-    
+    print(f"{'=' * 60}")
+
     prob_data = [r for r in results if r['problem'] == problem_name]
     algos = list(set(r['algo'] for r in prob_data))
-    
+
     algo_scores = {}
     algo_times = {}
-    
+
     for algo in algos:
-        scores = [r['best_score'] for r in prob_data if r['algo'] == algo]
-        times = [r['time'] for r in prob_data if r['algo'] == algo]
+        # 1. FILTER: Ignore 'None' values from algorithms that failed to yield
+        scores = [r['best_score'] for r in prob_data if r['algo'] == algo and r.get('best_score') is not None]
+        times = [r['time'] for r in prob_data if r['algo'] == algo and r.get('time') is not None]
+
+        # 2. SKIP algorithms that completely failed all runs
+        if not scores:
+            print(f"Algorithm: {algo:<20} | FAILED (No valid iterations/scores recorded)")
+            continue
+
         algo_scores[algo] = scores
         algo_times[algo] = times
-        
+
         mean_score = np.mean(scores)
         std_score = np.std(scores)
-        print(f"Algorithm: {algo:<20} | Robustness (Mean ± Std): {mean_score:.4e} ± {std_score:.4e} | Avg Time: {np.mean(times):.3f}s")
+        print(
+            f"Algorithm: {algo:<20} | Robustness (Mean ± Std): {mean_score:.4e} ± {std_score:.4e} | Avg Time: {np.mean(times):.3f}s")
 
-    # 1. Vẽ Comparative Boxplot bằng Plotly
+    # 3. Use ONLY valid algorithms for plotting
+    valid_algos = list(algo_scores.keys())
+
     fig_box = go.Figure()
-    for algo in algos:
-        # Lọc bỏ các giá trị vô cực nếu có để Plotly không bị lỗi
+    for algo in valid_algos:
         safe_scores = [s for s in algo_scores[algo] if s != float('inf')]
         fig_box.add_trace(go.Box(y=safe_scores, name=algo, boxpoints='all', jitter=0.3, pointpos=-1.8))
-        
+
     fig_box.update_layout(
         title=f"Comparative Performance (Solution Quality) - {problem_name}",
         yaxis_title="Final Best Score (Log Scale)",
@@ -43,62 +53,81 @@ def generate_statistical_report(results, problem_name):
         template="plotly_white",
         showlegend=False
     )
-    
+
     box_filename = f"results/boxplot_{problem_name.replace(' ', '_').lower()}.html"
     fig_box.write_html(box_filename)
     print(f"   [+] Exported Boxplot: {box_filename}")
 
-    # 2. HYPOTHESIS TESTING (T-test)
+    # 4. Use ONLY valid algorithms for T-Test
     print("\n--- HYPOTHESIS TESTING (T-Test) ---")
-    if len(algos) >= 2:
-        # Chọn thuật toán có mean tốt nhất làm base để so sánh với phần còn lại
-        best_algo = min(algos, key=lambda a: np.mean(algo_scores[a]))
+    if len(valid_algos) >= 2:
+        best_algo = min(valid_algos, key=lambda a: np.mean(algo_scores[a]))
         print(f"Best performing algorithm (by mean): {best_algo}")
-        
-        for other_algo in algos:
+
+        for other_algo in valid_algos:
             if other_algo == best_algo: continue
-            
-            # Tránh lỗi chia cho 0 nếu phương sai bằng 0 (các lần chạy ra kết quả y hệt nhau)
+
             if np.std(algo_scores[best_algo]) == 0 and np.std(algo_scores[other_algo]) == 0:
                 p_val = 1.0
             else:
                 t_stat, p_val = stats.ttest_ind(algo_scores[best_algo], algo_scores[other_algo])
-                
+
             sig = "SIGNIFICANT (p < 0.05)" if p_val < 0.05 else "NOT significant"
             print(f"{best_algo} vs {other_algo:<15} | p-value: {p_val:.4e} -> {sig}")
+
 
 def plot_exploration_exploitation(results, problem_name):
     """Vẽ biểu đồ đo lường hành vi Khám phá (Exploration) và Khai thác (Exploitation) bằng Plotly"""
     prob_data = [r for r in results if r['problem'] == problem_name]
     algos = list(set(r['algo'] for r in prob_data))
-    
+
     fig_line = go.Figure()
-    
+
     for algo in algos:
         # Lấy mảng diversity của tất cả các runs
         runs_diversity = [r.get('diversity', []) for r in prob_data if r['algo'] == algo]
-        
-        # Bỏ qua nếu thuật toán không có dữ liệu diversity (ví dụ: các thuật toán graph search)
-        if not runs_diversity or not runs_diversity[0]: 
+
+        # 1. SANITIZE DATA: Convert whatever is in 'diversity' to a single scalar number
+        valid_runs = []
+        for run in runs_diversity:
+            if isinstance(run, list) and len(run) > 0:
+                clean_run = []
+                for val in run:
+                    if val is None:
+                        clean_run.append(0.0)
+                    elif isinstance(val, (list, tuple, np.ndarray)):
+                        # If the data is a population or coordinate, calculate its variance
+                        # to get a single number representing "spread" (diversity)
+                        try:
+                            clean_run.append(float(np.var(val)))
+                        except:
+                            clean_run.append(0.0)  # Fallback just in case
+                    else:
+                        # If it is already a single number
+                        clean_run.append(float(val))
+                valid_runs.append(clean_run)
+
+        # Skip this algorithm entirely if there is no valid diversity data
+        if not valid_runs:
             continue
-            
-        # Tìm chiều dài ngắn nhất để cắt mảng (tránh lỗi mismatch dimension nếu số vòng lặp khác nhau)
-        min_len = min(len(run) for run in runs_diversity)
-        trimmed_runs = [run[:min_len] for run in runs_diversity]
-        
-        # Tính trung bình diversity qua các lần chạy
+
+        # 2. ALIGN LENGTHS: Tìm chiều dài ngắn nhất để cắt mảng
+        min_len = min(len(run) for run in valid_runs)
+        trimmed_runs = [run[:min_len] for run in valid_runs]
+
+        # 3. CALCULATE MEAN: Now NumPy only sees clean, 1D arrays of numbers!
         mean_diversity = np.mean(trimmed_runs, axis=0)
-        
+
         # Chuẩn hóa về % (so với giá trị max trong lịch sử của chính nó hoặc tổng thể)
         max_div = np.max(mean_diversity) if np.max(mean_diversity) > 0 else 1
         normalized_div = (mean_diversity / max_div) * 100
-        
+
         iterations = list(range(1, len(normalized_div) + 1))
-        
+
         fig_line.add_trace(go.Scatter(
-            x=iterations, 
-            y=normalized_div, 
-            mode='lines', 
+            x=iterations,
+            y=normalized_div,
+            mode='lines',
             name=algo,
             line=dict(width=2)
         ))
@@ -110,7 +139,7 @@ def plot_exploration_exploitation(results, problem_name):
         template="plotly_white",
         legend=dict(x=1.02, y=1, bordercolor="Black", borderwidth=1)
     )
-    
+
     exp_filename = f"results/explore_exploit_{problem_name.replace(' ', '_').lower()}.html"
     fig_line.write_html(exp_filename)
     print(f"   [+] Exported Exp/Exp chart: {exp_filename}")

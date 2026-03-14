@@ -54,6 +54,8 @@ class BenchmarkEngine:
                     diversity_history = []
                     best_score_final = None
                     best_sol_final = None
+
+                    tracked_prob = TrackedProblem(problem)
                     
                     for state in algo.run(problem):
                         score = state['best_score']
@@ -61,8 +63,15 @@ class BenchmarkEngine:
                         history.append(clean_score)
                         trajectory.append(state['best_solution'])
                         
-                        div = state.get('diversity', 0)
-                        diversity_history.append(div)
+                        current_sol = state.get('current_solution', None) 
+                        
+                        #epoch_population = tracked_prob.pop_epoch_solutions()
+                        
+                        # Now you have the full 'epoch_population' (a list of all nests/agents)!
+                        # You can calculate your exploration vs exploitation (diversity) here:
+                        # For example: div = calculate_diversity(epoch_population)
+                        #div = state.get('diversity', 0) # Replace this with your actual diversity calculation
+                        diversity_history.append(current_sol)
                         
                         best_score_final = clean_score
                         best_sol_final = state['best_solution']
