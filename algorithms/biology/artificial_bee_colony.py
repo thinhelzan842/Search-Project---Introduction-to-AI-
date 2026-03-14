@@ -24,7 +24,7 @@ class ArtificialBeeColony(AlgorithmBase):
         
         yield {
             'generation': 0, 'population': pop.copy(), 'fitness': fitness.copy(),
-            'best_solution': best_sol.copy(), 'best_score': best_scr
+            'best_solution': best_sol.copy(), 'best_score': best_scr, 'population_scores': list(fitness)
         }
 
         for gen in range(self.gen):
@@ -77,6 +77,6 @@ class ArtificialBeeColony(AlgorithmBase):
 
             yield {
                 'generation': gen + 1, 'population': pop.copy(), 'fitness': fitness.copy(),
-                'best_solution': best_sol.copy(), 'best_score': best_scr
+                'best_solution': best_sol.copy(), 'best_score': best_scr, 'population_scores': list(fitness)
             }
         return best_sol, best_scr

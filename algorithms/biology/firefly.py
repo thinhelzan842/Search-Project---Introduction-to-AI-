@@ -23,7 +23,7 @@ class FireflyAlgorithm(AlgorithmBase):
 
         yield {
             'generation': 0, 'population': pop.copy(), 'fitness': fitness.copy(),
-            'best_solution': best_sol.copy(), 'best_score': best_scr
+            'best_solution': best_sol.copy(), 'best_score': best_scr, 'population_scores': list(fitness)
         }
 
         scale = np.abs(r_bound - l_bound)
@@ -45,6 +45,6 @@ class FireflyAlgorithm(AlgorithmBase):
                 
             yield {
                 'generation': gen + 1, 'population': pop.copy(), 'fitness': fitness.copy(),
-                'best_solution': best_sol.copy(), 'best_score': best_scr
+                'best_solution': best_sol.copy(), 'best_score': best_scr, 'population_scores': list(fitness)
             }
         return best_sol, best_scr

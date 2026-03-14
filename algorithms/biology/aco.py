@@ -27,7 +27,7 @@ class ACO(AlgorithmBase):
         
         yield {
             'iteration': 0, 'current_solution': problem.get_initial_state(), 'current_score': best_score,
-            'best_solution': best_solution, 'best_score': best_score
+            'best_solution': best_solution, 'best_score': best_score, 'population_scores': [best_score]
         }
         
         for iteration in range(self.max_iters):
@@ -121,5 +121,5 @@ class ACO(AlgorithmBase):
 
             yield {
                 'iteration': iteration + 1, 'current_solution': best_solution, 'current_score': best_score,
-                'best_solution': best_solution, 'best_score': best_score
+                'best_solution': best_solution, 'best_score': best_score, 'population_scores': list(scores)
             }

@@ -52,7 +52,7 @@ class GravitationalSearchAlgorithm(AlgorithmBase):
 
             yield {
                 'iteration': iteration + 1, 'current_solution': list(best_sol), 'current_score': best_score,
-                'best_solution': list(best_sol), 'best_score': best_score
+                'best_solution': list(best_sol), 'best_score': best_score, 'population_scores': list(scores)
             }
 
 """import random
