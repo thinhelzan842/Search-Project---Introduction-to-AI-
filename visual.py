@@ -10,8 +10,8 @@ import math
 from algorithms import *
 from problems import *
 
-st.set_page_config(page_title="Optimization Visualizer", layout="wide")
-st.title("Optimization Algorithms: Step-by-Step Visualization")
+st.set_page_config(page_title="Visualizer", layout="wide")
+st.sidebar.title("Algorithms Visualizer")
 
 # ==========================================
 # 1. SIDEBAR - SELECT PROBLEM CATEGORY
@@ -166,6 +166,7 @@ else:
 
 st.sidebar.header("3. Interface Settings")
 delay = st.sidebar.slider("Animation speed (seconds/frame)", 0.0, 0.5, 0.1)
+run_clicked = st.sidebar.button("Run Algorithm", type="primary", use_container_width=True)
 
 # ==========================================
 # 3. HELPER FUNCTIONS
@@ -188,13 +189,13 @@ def get_circle_coords(n):
 # ==========================================
 # 4. RUN ALGORITHM & ANIMATION
 # ==========================================
-if st.button("Run Algorithm", type="primary"):
+if run_clicked:
     generator = algo.run(problem)
 
     info_placeholder = st.empty()
     plot_placeholder = st.empty()
 
-    fig, ax = plt.subplots(figsize=(10, 5)) 
+    fig, ax = plt.subplots(figsize=(10, 3.5)) 
     
     if problem_type == "Continuous":
         X, Y, Z = get_contour_data(problem_name, bound_val)
