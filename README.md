@@ -114,3 +114,6 @@ streamlit run visual.py
 ## 8. Ghi chú
 - Dự án thiên về mục tiêu học thuật: minh họa nguyên lý thuật toán và so sánh thực nghiệm.
 - Các tham số trong `main.py` có thể thay đổi để cân bằng giữa thời gian chạy và chất lượng kết quả.
+
+## 9. Video : [SEARCH & NATURE INSPIRED ALGORITHMS](https://www.youtube.com/watch?v=4OvHpcyoZ94)
+
