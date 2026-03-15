@@ -132,8 +132,12 @@ else:
         problem = GraphColoring(size=gc_size)
 
     st.sidebar.header("2. Algorithm Settings")
-    # Tạm thời hiển thị các thuật toán áp dụng cho Discrete
-    algo_name = st.sidebar.selectbox("Select Algorithm", ["ACO", "HillClimbing", "SimulatedAnnealing"])
+    
+    # Cập nhật danh sách các thuật toán rời rạc từ các file bạn đã upload
+    algo_name = st.sidebar.selectbox("Select Algorithm", [
+        "ACO", "HillClimbing", "SimulatedAnnealing", 
+        "TabuSearch", "BFS", "DFS", "UCS", "Greedy BFS", "A*"
+    ])
     
     if algo_name == "ACO":
         num_ants = st.sidebar.slider("Number of ants", 5, 100, 20)
@@ -141,12 +145,32 @@ else:
         alpha = st.sidebar.slider("Alpha (Pheromone)", 0.1, 5.0, 1.0)
         beta = st.sidebar.slider("Beta (Heuristic)", 0.1, 5.0, 2.0)
         algo = ACO(num_ants=num_ants, max_iters=max_iters, alpha=alpha, beta=beta)
+        
     elif algo_name == "HillClimbing":
         max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
         algo = HillClimbing(max_iters=max_iters, step_size=1, num_neighbors=15)
+        
     elif algo_name == "SimulatedAnnealing":
         max_epochs = st.sidebar.slider("Max epochs", 10, 200, 50)
         algo = SimulatedAnnealing(max_epochs=max_epochs, initial_temp=100.0, cooling_rate=0.99, step_size=1, markov_chain_length=20)
+
+    elif algo_name == "TabuSearch":
+        max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
+        tabu_tenure = st.sidebar.slider("Tabu tenure", 5, 50, 10)
+        num_neighbors = st.sidebar.slider("Number of neighbors", 5, 50, 20)
+        algo = TabuSearch(max_iters=max_iters, tabu_tenure=tabu_tenure, num_neighbors=num_neighbors, step_size=1)
+
+    # Các thuật toán tìm kiếm mù và tìm kiếm thông minh (Search Algorithms)
+    elif algo_name == "BFS":
+        algo = BFS()
+    elif algo_name == "DFS":
+        algo = DFS()
+    elif algo_name == "UCS":
+        algo = UCS()
+    elif algo_name == "Greedy BFS":
+        algo = GreedyBFS()
+    elif algo_name == "A*":
+        algo = AStar()
 
 st.sidebar.header("3. Interface Settings")
 delay = st.sidebar.slider("Animation speed (seconds/frame)", 0.0, 0.5, 0.1)
