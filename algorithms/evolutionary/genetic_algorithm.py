@@ -75,12 +75,17 @@ class GeneticAlgorithm(AlgorithmBase):
 
         yield {
             'generation': 0, 'current_solution': self.pop.copy(), 'current_score': scr_list.copy(),
-            'best_solution': best_sol, 'best_score': best_scr, 'population_scores': list(scr_list)
+            'best_solution': best_sol, 'best_score': best_scr, 'population_scores': list(scr_list),
+            'population': self.pop.copy()
         }
 
         gen = 0
 
-        while (hasattr(problem, 'get_optimal_value') and best_scr <= problem.get_optimal_value() + 1e-9) and gen < self.gen:
+        while gen < self.gen:
+            # Kiểm tra nếu đã đạt điểm tối ưu thì dừng sớm (Early Stopping)
+            if hasattr(problem, 'get_optimal_value') and best_scr <= problem.get_optimal_value() + 1e-9:
+                break
+            
             new_pop = [best_sol]  # Elitism
 
             while len(new_pop) < self.size:
@@ -113,7 +118,8 @@ class GeneticAlgorithm(AlgorithmBase):
 
             yield {
                 'generation': gen, 'current_solution': self.pop.copy(), 'current_score': scr_list.copy(),
-                'best_solution': best_sol, 'best_score': best_scr, 'population_scores': list(scr_list)
+                'best_solution': best_sol, 'best_score': best_scr, 'population_scores': list(scr_list),
+                'population': self.pop.copy()
             }
 
         return best_sol, best_scr
