@@ -39,7 +39,7 @@ if problem_type == "Continuous":
 
     st.sidebar.header("2. Algorithm Settings")
     
-    # --- MỞ RỘNG DANH SÁCH THUẬT TOÁN CONTINUOUS ---
+    # --- DANH SÁCH THUẬT TOÁN CONTINUOUS ĐẦY ĐỦ ---
     algo_name = st.sidebar.selectbox("Select Algorithm", [
         "PSO", "SimulatedAnnealing", "HillClimbing", "ArtificialBeeColony",
         "CuckooOptimization", "FireflyAlgorithm", "TabuSearch", 
@@ -117,7 +117,6 @@ else:
         ["Shortest Path", "Traveling Salesman", "Knapsack", "Graph Coloring"]
     )
     
-    # Sync problem instantiations with main.py
     if problem_name == "Shortest Path":
         graph_size = st.sidebar.slider("Graph Size", 5, 50, 12)
         problem = ShortestPath(size=graph_size)
@@ -133,7 +132,6 @@ else:
 
     st.sidebar.header("2. Algorithm Settings")
     
-    # Cập nhật danh sách các thuật toán rời rạc từ các file bạn đã upload
     algo_name = st.sidebar.selectbox("Select Algorithm", [
         "ACO", "HillClimbing", "SimulatedAnnealing", 
         "TabuSearch", "BFS", "DFS", "UCS", "Greedy BFS", "A*"
@@ -160,17 +158,11 @@ else:
         num_neighbors = st.sidebar.slider("Number of neighbors", 5, 50, 20)
         algo = TabuSearch(max_iters=max_iters, tabu_tenure=tabu_tenure, num_neighbors=num_neighbors, step_size=1)
 
-    # Các thuật toán tìm kiếm mù và tìm kiếm thông minh (Search Algorithms)
-    elif algo_name == "BFS":
-        algo = BFS()
-    elif algo_name == "DFS":
-        algo = DFS()
-    elif algo_name == "UCS":
-        algo = UCS()
-    elif algo_name == "Greedy BFS":
-        algo = GreedyBFS()
-    elif algo_name == "A*":
-        algo = AStar()
+    elif algo_name == "BFS": algo = BFS()
+    elif algo_name == "DFS": algo = DFS()
+    elif algo_name == "UCS": algo = UCS()
+    elif algo_name == "Greedy BFS": algo = GreedyBFS()
+    elif algo_name == "A*": algo = AStar()
 
 st.sidebar.header("3. Interface Settings")
 delay = st.sidebar.slider("Animation speed (seconds/frame)", 0.0, 0.5, 0.1)
@@ -191,7 +183,6 @@ def get_contour_data(prob_name, bound):
     return X, Y, Z
 
 def get_circle_coords(n):
-    """Sinh tọa độ vòng tròn cho các bài toán không có sẵn tọa độ như TSP, GraphColoring"""
     return [(50 + 40*math.cos(2*math.pi*i/n), 50 + 40*math.sin(2*math.pi*i/n)) for i in range(n)]
 
 # ==========================================
@@ -203,9 +194,8 @@ if st.button("Run Algorithm", type="primary"):
     info_placeholder = st.empty()
     plot_placeholder = st.empty()
 
-    fig, ax = plt.subplots(figsize=(10, 4)) 
+    fig, ax = plt.subplots(figsize=(10, 5)) 
     
-    # --- SETUP PLOT DỰA THEO TYPE ---
     if problem_type == "Continuous":
         X, Y, Z = get_contour_data(problem_name, bound_val)
         contour = ax.contourf(X, Y, Z, levels=50, cmap='viridis', alpha=0.8)
@@ -222,35 +212,28 @@ if st.button("Run Algorithm", type="primary"):
         ax.set_title(f"{algo_name} running on {problem_name}")
         
         if problem_name in ["Shortest Path", "Traveling Salesman", "Graph Coloring"]:
-            # Lấy tọa độ (nếu có) hoặc sinh tự động
-            if hasattr(problem, 'coords'):
-                coords = problem.coords
-            ax.set_title(f"{algo_name} running on {problem_name}")
-        
-        if problem_name in ["Shortest Path", "Traveling Salesman", "Graph Coloring"]:
-            # Lấy tọa độ
-            if hasattr(problem, 'coords'):
-                coords = problem.coords
-            else:
-                coords = get_circle_coords(problem.size)
-                
-            x_coords = [c[0] for c in coords]
-            y_coords = [c[1] for c in coords]
+            coords = getattr(problem, 'coords', get_circle_coords(problem.size))
+            x_coords, y_coords = zip(*coords)
             
-            # --- 1. VẼ CẠNH NỀN (Allowed Edges) ---
+            # Vẽ các cạnh nền (đường đi có thể đi được)
             if hasattr(problem, 'adj'):
+                # Dành cho Shortest Path hoặc các đồ thị có danh sách kề cụ thể
                 for i in range(len(problem.adj)):
                     for j in problem.adj[i]:
                         if i < j:
                             ax.plot([coords[i][0], coords[j][0]], [coords[i][1], coords[j][1]], 
-                                    c='gray', alpha=0.2, linewidth=0.8, zorder=1)
+                                    c='gray', alpha=0.15, linewidth=0.8, zorder=1)
+            elif problem_name == "Traveling Salesman":
+                # TSP thường là đồ thị đầy đủ, vẽ tất cả các cặp nối với nhau
+                for i in range(problem.size):
+                    for j in range(i + 1, problem.size):
+                        ax.plot([coords[i][0], coords[j][0]], [coords[i][1], coords[j][1]], 
+                                c='dimgray', alpha=0.3, linewidth=1, zorder=1)
             
-            # --- 2. VẼ NODE & ID (Giống Plotly) ---
-            node_scatter = ax.scatter(x_coords, y_coords, c='darkslategrey', s=60, zorder=3)
+            node_scatter = ax.scatter(x_coords, y_coords, c='darkslategrey', s=100, zorder=3, edgecolors='white')
             for i, (x, y) in enumerate(coords):
-                ax.text(x + 1, y + 1, f"ID: {i}", fontsize=8, fontweight='bold', zorder=6)
+                ax.text(x + 1.2, y + 1.2, f"{i}", fontsize=9, fontweight='bold', zorder=6)
             
-            # --- 3. ĐIỂM ĐẦU/CUỐI ĐẶC BIỆT ---
             if problem_name == "Shortest Path":
                 ax.scatter(coords[0][0], coords[0][1], c='lime', s=180, edgecolors='black', 
                            linewidth=1.5, zorder=5, label='START')
@@ -258,15 +241,15 @@ if st.button("Run Algorithm", type="primary"):
                            edgecolors='black', linewidth=1.5, zorder=5, label='END')
                 ax.legend(loc='upper right')
                 
-            # Line vẽ đường đi: thêm marker tròn và màu xanh Plotly
-            path_line, = ax.plot([], [], c='#636EFA', linewidth=3, marker='o', markersize=5, zorder=4)
+            path_line, = ax.plot([], [], c='#FF4B4B', linewidth=3, marker='o', markersize=5, zorder=4)
             
         elif problem_name == "Knapsack":
-            # Bar chart cho bài toán cái túi
-            bars = ax.bar(range(problem.size), problem.profits, color='lightgray', edgecolor='black')
+            bars = ax.bar(range(problem.size), problem.profits, color='lightgray', edgecolor='black', alpha=0.8)
+            for i, (p, w) in enumerate(zip(problem.profits, problem.weights)):
+                ax.text(i, p + 0.1, f"w:{w}", ha='center', fontsize=8, fontweight='bold')
             ax.set_xticks(range(problem.size))
             ax.set_ylabel('Profit')
-            ax.set_xlabel('Items')
+            ax.set_xlabel('Items (Weight is shown above bars)')
 
     # --- ANIMATION LOOP ---
     for step_data in generator:
@@ -274,52 +257,58 @@ if st.button("Run Algorithm", type="primary"):
         best_score = step_data.get('best_score', float('inf'))
         best_solution = step_data.get('best_solution', [])
         
+        extra_info = ""
+        
         if problem_type == "Continuous":
-            if 'population_positions' in step_data or 'population' in step_data:
-                positions = np.array(step_data.get('population_positions', step_data.get('population')))
-                scatter.set_offsets(positions[:, :2])
-            elif 'current_solution' in step_data:
-                current_sol = np.array(step_data['current_solution']).reshape(1, 2)
-                scatter.set_offsets(current_sol[:, :2])
-                
+            pos = np.array(step_data.get('population_positions', step_data.get('population', [])))
+            if len(pos) > 0: scatter.set_offsets(pos[:, :2])
             if best_solution is not None and len(best_solution) >= 2:
                 best_scatter.set_offsets([best_solution[0], best_solution[1]])
-                
-        else: # Phần Discrete trong vòng lặp (Dòng 232)
-            if best_solution and best_score != float('inf'):
+        else:
+            if best_solution and len(best_solution) > 0:
                 if problem_name in ["Shortest Path", "Traveling Salesman"]:
-                    # Kiểm tra nếu best_solution là danh sách tọa độ (Grid) hay ID (Graph)
-                    if isinstance(best_solution[0], (list, tuple, np.ndarray)):
-                        path_x = [p[0] for p in best_solution]
-                        path_y = [p[1] for p in best_solution]
-                    else:
-                        path_x = [coords[node][0] for node in best_solution]
-                        path_y = [coords[node][1] for node in best_solution]
-                    
-                    if problem_name == "Traveling Salesman" and len(best_solution) > 1:
-                        path_x.append(path_x[0])
-                        path_y.append(path_y[0])
-                        
-                    path_line.set_data(path_x, path_y)
+                    try:
+                        # 1. Chuyển đổi ID node sang tọa độ x, y
+                        if isinstance(best_solution[0], (list, tuple, np.ndarray)):
+                            px = [p[0] for p in best_solution]
+                            py = [p[1] for p in best_solution]
+                        else:
+                            # Ép kiểu n sang int để tránh lỗi chỉ số nếu algo trả về float
+                            px = [coords[int(n)][0] for n in best_solution]
+                            py = [coords[int(n)][1] for n in best_solution]
+
+                        # 2. Xử lý khép kín chu trình cho TSP
+                        if problem_name == "Traveling Salesman" and len(best_solution) > 1:
+                            # Chỉ khép kín nếu điểm cuối khác điểm đầu
+                            if best_solution[0] != best_solution[-1]:
+                                px.append(px[0])
+                                py.append(py[0])
+
+                        # 3. Cập nhật dữ liệu cho đường kẻ
+                        path_line.set_data(px, py)
+
+                        # Cập nhật thông tin bổ sung: số lượng thành phố đã đi qua
+                        extra_info = f" | Visited: **{len(best_solution)}/{problem.size}**"
+                    except Exception as e:
+                        st.error(f"Error mapping path: {e}")
                     
                 elif problem_name == "Graph Coloring":
-                    colors = plt.cm.get_cmap('tab20', problem.size)
-                    node_colors = [colors(c) for c in best_solution]
-                    # Nếu giải pháp chưa đầy đủ (đang search), fill màu xám cho các node còn lại
-                    while len(node_colors) < problem.size:
-                        node_colors.append((0.8, 0.8, 0.8, 1.0))
+                    num_colors = len(set(best_solution))
+                    extra_info = f" | Colors Used: **{num_colors}**"
+                    cmap = plt.get_cmap('gist_ncar')
+                    max_c = max(max(best_solution), 1)
+                    node_colors = [cmap(c / max_c) for c in best_solution]
+                    while len(node_colors) < problem.size: node_colors.append((0.8, 0.8, 0.8, 1.0))
                     node_scatter.set_color(node_colors)
-                    node_scatter.set_edgecolor('black')
                     
                 elif problem_name == "Knapsack":
+                    current_w = sum(problem.weights[i] for i, v in enumerate(best_solution) if v == 1)
+                    extra_info = f" | Total Weight: **{current_w}/{problem.limit}**"
                     for i, bar in enumerate(bars):
-                        if i < len(best_solution) and best_solution[i] == 1:
-                            bar.set_color('green') # Chọn
-                        else:
-                            bar.set_color('lightgray') # Bỏ qua
+                        bar.set_color('forestgreen' if i < len(best_solution) and best_solution[i] == 1 else 'lightgray')
 
         plot_placeholder.pyplot(fig)
-        info_placeholder.info(f"Iteration: **{iteration}** | Best Score: **{best_score:.6f}**")
+        info_placeholder.info(f"Iteration: **{iteration}** | Best Score: **{best_score:.6f}**" + extra_info)
         time.sleep(delay)
         
     st.success(f"Successfully completed running {algo_name} algorithm!")
