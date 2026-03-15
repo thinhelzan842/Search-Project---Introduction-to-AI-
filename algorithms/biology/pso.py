@@ -24,7 +24,8 @@ class PSO(AlgorithmBase):
         
         yield {
             'iteration': 0, 'current_solution': gbest_position.tolist(), 'current_score': gbest_fitness,
-            'best_solution': gbest_position.tolist(), 'best_score': gbest_fitness, 'population_scores': list(fitness)
+            'best_solution': gbest_position.tolist(), 'best_score': gbest_fitness, 'population_scores': list(fitness),
+            'population_positions': positions.tolist()
         }
         
         for iteration in range(self.max_iters):
@@ -51,5 +52,6 @@ class PSO(AlgorithmBase):
             
             yield {
                 'iteration': iteration + 1, 'current_solution': gbest_position.tolist(), 'current_score': gbest_fitness,
-                'best_solution': gbest_position.tolist(), 'best_score': gbest_fitness, 'population_scores': list(fitness)
+                'best_solution': gbest_position.tolist(), 'best_score': gbest_fitness, 'population_scores': list(fitness),
+                'population_positions': positions.tolist()
             }

@@ -1,17 +1,12 @@
 import time
 import tracemalloc
 import numpy as np
-import pandas as pd
-from core import ContinuousProblem  # Imported for type checking
-from utils.visualization import (
-    plot_convergence_robust, 
-    plot_boxplot_performance, 
-    plot_exploration_exploitation,
-    plot_3d_landscape, 
-    plot_heatmap, 
-    plot_animation_2d
-)
 import scipy.stats as stats
+from core import ContinuousProblem
+from utils.visualization import (
+    plot_convergence_robust, plot_boxplot_performance, plot_exploration_exploitation,
+    plot_3d_landscape, plot_pvalue_heatmap, plot_first_hitting_time
+)
 
 class BenchmarkEngine:
     def __init__(self, algorithms, problems, num_runs=1):
@@ -22,25 +17,18 @@ class BenchmarkEngine:
 
     def run_all(self):
         print(f"BENCHMARK (Algorithm: {len(self.algorithms)}, Problem: {len(self.problems)})")
-        
         for problem in self.problems:
             print(f"\n{'='*50}\n Problem: {problem.name().upper()}\n{'='*50}")
-            
             for algo in self.algorithms:
                 print(f"  >> Running: [ {algo.name()} ]...")
-                
                 for run_idx in range(self.num_runs):
                     try:
-                        # Bắt đầu đo lường Space Complexity
                         tracemalloc.start()
                         start_time = time.time()
                         
-                        history = []
-                        trajectory = []
-                        best_score_final = None
-                        diversity_history = []
+                        history, trajectory, diversity_history = [], [], []
+                        best_score_final = float('inf')
                         
-                        # Chạy thuật toán
                         for state in algo.run(problem):
                             score = state['best_score']
                             clean_score = score if score != float('inf') else 1e6 
@@ -49,99 +37,87 @@ class BenchmarkEngine:
                             best_score_final = clean_score
                             
                             if 'population_scores' in state:
-                                diversity = np.std(state['population_scores'])
-                                diversity_history.append(diversity)
+                                diversity_history.append(np.std(state['population_scores']))
                             
                         exec_time = time.time() - start_time
                         current_mem, peak_mem = tracemalloc.get_traced_memory()
                         tracemalloc.stop()
-                        peak_mem_kb = peak_mem / 1024.0
                         
                         run_result = {
                             'algo': algo.name(), 'problem': problem.name(),
                             'best_score': best_score_final, 'history': history,
                             'trajectory': trajectory, 'time': exec_time,
-                            'space_peak_kb': peak_mem_kb
+                            'space_peak_kb': peak_mem / 1024.0
                         }
-                        if diversity_history:
-                            run_result['diversity_history'] = diversity_history
+                        if diversity_history: run_result['diversity_history'] = diversity_history
                         self.results.append(run_result)
-                        
                         print(f"    - Num {run_idx+1:02d}/{self.num_runs} | Loss: {best_score_final:.4e} | Time: {exec_time:.3f}s")
 
                     except Exception as e:
-                        # Nếu lỗi, dừng đo bộ nhớ, in thông báo và tiếp tục run/algo khác
-                        if tracemalloc.is_tracing():
-                            tracemalloc.stop()
-                        print(f"    [ERROR] Algorithm {algo.name()} failed on {problem.name()}: {e}")
+                        if tracemalloc.is_tracing(): tracemalloc.stop()
+                        print(f"    [ERROR] Algorithm {algo.name()} failed: {e}")
                         continue
-
-    def get_best_run(self, algo_name, problem_name):
-        runs = [r for r in self.results if r['algo'] == algo_name and r['problem'] == problem_name]
-        if not runs: return None
-        return min(runs, key=lambda r: r['best_score'])
 
     def generate_reports(self, prefix="all"):
         for problem in self.problems:
             all_histories = {algo.name(): [] for algo in self.algorithms}
             final_scores = {algo.name(): [] for algo in self.algorithms}
-            trajectories = {}
-            all_diversities = {algo.name(): [] for algo in self.algorithms}
+            trajectories, all_diversities = {}, {algo.name(): [] for algo in self.algorithms}
             
-            # Gom dữ liệu từ TẤT CẢ các lần chạy
             for run in self.results:
                 if run['problem'] == problem.name():
                     algo_name = run['algo']
                     all_histories[algo_name].append(run['history'])
                     final_scores[algo_name].append(run['best_score'])
                     
-                    # Lấy trajectory của lần chạy tốt nhất để vẽ 3D
                     if algo_name not in trajectories or run['best_score'] < min(final_scores[algo_name]):
                         trajectories[algo_name] = run['trajectory']
-                        
-                    # Thu thập toàn bộ diversity history để tính trung bình
                     if 'diversity_history' in run:
                         all_diversities[algo_name].append(run['diversity_history'])
 
             safe_name = problem.name().replace(" ", "_").lower()
             
-            # Gọi các hàm vẽ mới
+            # 1. Base Plots
             plot_convergence_robust(all_histories, title=f"Convergence - {problem.name()}", filename=f"convergence_{safe_name}.html")
             plot_boxplot_performance(final_scores, title=f"Robustness (Boxplot) - {problem.name()}", filename=f"boxplot_{safe_name}.html")
             
-            # Vẽ Exploration/Exploitation bằng cách tính TRUNG BÌNH các lần chạy
-            # Fix lỗi tính Diversity trung bình khi các lần chạy có độ dài khác nhau
+            # 2. Explore / Exploit
             for algo_name, div_runs in all_diversities.items():
                 if len(div_runs) > 0:
-                    # Truncate về độ dài ngắn nhất để đảm bảo tính Explore/Exploit là thực tế cho đến khi kết thúc
                     min_len = min(len(r) for r in div_runs)
-                    truncated_runs = [r[:min_len] for r in div_runs]
-                    avg_div_history = np.mean(truncated_runs, axis=0)
-                    
-                    safe_algo = algo_name.replace(" ", "_").lower()
-                    plot_exploration_exploitation(avg_div_history, title=f"{algo_name}: Explore vs Exploit - {problem.name()}", 
-                                                   filename=f"ee_{safe_algo}_{safe_name}.html")
-            
-            print(f"\n[STATISTICS] Hypothesis Testing for {problem.name()}:")
-            if final_scores:
-                mean_scores = {algo: np.mean(scores) for algo, scores in final_scores.items() if scores}
-                if mean_scores:
-                    best_algo = min(mean_scores, key=mean_scores.get)
-                    print(f"  Best Algorithm (Mean): {best_algo} (Mean = {mean_scores[best_algo]:.4e})")
-                    
-                    for algo, scores in final_scores.items():
-                        if algo != best_algo and scores:
-                            stat, p_val = stats.ranksums(final_scores[best_algo], scores)
-                            significance = "***" if p_val < 0.001 else "**" if p_val < 0.01 else "*" if p_val < 0.05 else "ns"
-                            print(f"    vs {algo:<25}: p-value = {p_val:.4e} [{significance}]")
-            
-    def generate_animations(self):
-        for problem in self.problems:
+                    avg_div_history = np.mean([r[:min_len] for r in div_runs], axis=0)
+                    plot_exploration_exploitation(avg_div_history, title=f"{algo_name}: Explore vs Exploit - {problem.name()}", filename=f"ee_{algo_name.replace(' ', '_').lower()}_{safe_name}.html")
+
+            # 3. 3D Landscape (Dành cho bài toán liên tục 2 chiều)
             if isinstance(problem, ContinuousProblem) and hasattr(problem, 'dim') and problem.dim == 2:
-                safe_prob = problem.name().replace(" ", "_").lower()
-                for algo in self.algorithms:
-                    best_run = self.get_best_run(algo.name(), problem.name())
-                    if best_run:
-                        safe_algo = algo.name().replace(" ", "_").lower()
-                        filename = f"anim_{safe_algo}_{safe_prob}.gif"
-                        plot_animation_2d(problem, best_run['trajectory'], algo.name(), filename)
+                plot_3d_landscape(problem, trajectories, filename=f"3d_landscape_{safe_name}.html")
+            
+            # 4. First Hitting Time (Convergence Speed)
+            valid_scores = [s for scores in final_scores.values() for s in scores if s != 1e6]
+            if valid_scores:
+                best_overall = min(valid_scores)
+                threshold = best_overall + 0.05 * abs(best_overall) if best_overall != 0 else 1e-3
+                
+                # Lấy độ dài history lớn nhất làm hình phạt cho các thuật toán không chạm ngưỡng
+                max_len = max([len(h) for histories in all_histories.values() for h in histories] + [0])
+                
+                hitting_times = {}
+                for algo_name, histories in all_histories.items():
+                    if not histories: continue
+                    # Thay len(h) bằng max_len
+                    times = [next((i for i, val in enumerate(h) if val <= threshold), max_len) for h in histories]
+                    hitting_times[algo_name] = np.mean(times)
+
+            # 5. Statistical Significance Matrix (P-Value Heatmap)
+            algos_list = [a for a in final_scores.keys() if final_scores[a]]
+            n_algos = len(algos_list)
+            if n_algos > 1:
+                p_matrix = np.ones((n_algos, n_algos))
+                for i in range(n_algos):
+                    for j in range(n_algos):
+                        if i != j:
+                            try:
+                                stat, p_val = stats.ranksums(final_scores[algos_list[i]], final_scores[algos_list[j]])
+                                p_matrix[i, j] = p_val
+                            except: pass
+                plot_pvalue_heatmap(p_matrix, algos_list, title=f"Significance P-Value Matrix - {problem.name()}", filename=f"pvalue_matrix_{safe_name}.html")

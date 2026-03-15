@@ -3,19 +3,17 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 from core import ContinuousProblem 
 from plotly.subplots import make_subplots
 
 os.makedirs("results", exist_ok=True)
 
-# --- 1. HỘI TỤ ROBUST (Đã sửa lỗi Inhomogeneous Shape) ---
-def plot_convergence_robust(histories_dict, title="Convergence (Mean ± Std)", filename="convergence.html"):
+# --- 1. HỘI TỤ ROBUST (Chỉ giữ đường Mean) ---
+def plot_convergence_robust(histories_dict, title="Convergence (Mean)", filename="convergence.html"):
     fig = go.Figure()
     for algo_name, runs in histories_dict.items():
         if not runs: continue
         
-        # FIX: Tìm chiều dài lớn nhất và bù (padding) giá trị cuối cho các lần chạy ngắn hơn
         max_len = max(len(r) for r in runs)
         padded_runs = []
         for r in runs:
@@ -26,20 +24,8 @@ def plot_convergence_robust(histories_dict, title="Convergence (Mean ± Std)", f
         
         runs_array = np.array(padded_runs)
         mean_hist = np.mean(runs_array, axis=0) + 1e-12
-        std_hist = np.std(runs_array, axis=0)
-        
-        upper_bound = mean_hist + std_hist
-        lower_bound = np.clip(mean_hist - std_hist, 1e-12, None)
         x_vals = list(range(len(mean_hist)))
 
-        fig.add_trace(go.Scatter(
-            x=x_vals + x_vals[::-1],
-            y=list(upper_bound) + list(lower_bound)[::-1],
-            fill='toself',
-            fillcolor=f'rgba({np.random.randint(0,255)},{np.random.randint(0,255)},200,0.2)',
-            line=dict(color='rgba(255,255,255,0)'),
-            hoverinfo="skip", showlegend=False
-        ))
         fig.add_trace(go.Scatter(x=x_vals, y=mean_hist, mode='lines', name=algo_name))
 
     fig.update_layout(title=title, template="plotly_white", yaxis_type="log", 
@@ -57,7 +43,7 @@ def plot_boxplot_performance(scores_dict, title="Robustness & Quality (Boxplot)"
     fig.update_layout(template="plotly_white", yaxis_type="log")
     fig.write_html(os.path.join("results", filename))
 
-# --- 3. EXPLORATION VS EXPLOITATION (Đã sửa lỗi đồng bộ độ dài) ---
+# --- 3. EXPLORATION VS EXPLOITATION ---
 def plot_exploration_exploitation(diversity_history, title="Exploration vs Exploitation", filename="explore_exploit.html"):
     if len(diversity_history) == 0: return
     div_array = np.array(diversity_history)
@@ -100,24 +86,15 @@ def plot_heatmap(data_matrix, algos, problems, title="Heatmap", filename="heatma
     fig.update_layout(title=title)
     fig.write_html(os.path.join("results", filename))
 
-# --- 6. ANIMATION GIF ---
-def plot_animation_2d(problem, trajectory, algo_name, filename="animation.gif"):
-    if not isinstance(problem, ContinuousProblem) or problem.dim != 2: return
-    fig, ax = plt.subplots()
-    # (Giữ nguyên logic vẽ animation của bạn)
-    plt.close(fig)
-
-# --- 7. SCALABILITY & COMPLEXITY (Đã thêm Space Complexity) ---
+# --- 6. SCALABILITY & COMPLEXITY ---
 def plot_scalability(sizes, times, spaces, fitnesses, algo_name="Algorithm", filename="scalability.html"):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     
-    # Trục Y trái: Thời gian chạy và Dung lượng bộ nhớ (Complexity)
     fig.add_trace(go.Scatter(x=sizes, y=times, name="Time (s)", mode='lines+markers', 
                              line=dict(color='red', width=3), marker=dict(size=8)), secondary_y=False)
     fig.add_trace(go.Scatter(x=sizes, y=spaces, name="Space (KB)", mode='lines+markers', 
                              line=dict(color='green', width=3, dash='dot'), marker=dict(size=8, symbol='square')), secondary_y=False)
     
-    # Trục Y phải: Chất lượng nghiệm (Scalability)
     fig.add_trace(go.Scatter(x=sizes, y=fitnesses, name="Best Fitness", mode='lines+markers', 
                              line=dict(color='blue', width=3), marker=dict(size=8)), secondary_y=True)
     
@@ -125,5 +102,43 @@ def plot_scalability(sizes, times, spaces, fitnesses, algo_name="Algorithm", fil
                       xaxis_title="Problem Size (Dimensions)", template="plotly_white")
     fig.update_yaxes(title_text="Execution Time (s) & Space Peak (KB)", secondary_y=False)
     fig.update_yaxes(title_text="Best Fitness (Log Scale)", type="log", secondary_y=True)
-    
+    fig.write_html(os.path.join("results", filename))
+
+# --- 7. P-VALUE HEATMAP (STATISTICAL SIGNIFICANCE) ---
+def plot_pvalue_heatmap(p_matrix, algos, title="Statistical Significance (P-Value)", filename="pvalue.html"):
+    text_matrix = []
+    for row in p_matrix:
+        text_row = []
+        for val in row:
+            if val == 1.0: text_row.append("-")
+            elif val < 0.001: text_row.append(f"{val:.1e}<br>(***)")
+            elif val < 0.01: text_row.append(f"{val:.1e}<br>(**)")
+            elif val < 0.05: text_row.append(f"{val:.1e}<br>(*)")
+            else: text_row.append(f"{val:.2f}<br>(ns)")
+        text_matrix.append(text_row)
+
+    fig = go.Figure(data=go.Heatmap(
+        z=p_matrix, x=algos, y=algos,
+        text=text_matrix, texttemplate="%{text}",
+        colorscale='RdYlGn_r', zmin=0, zmax=0.05
+    ))
+    fig.update_layout(title=title, template="plotly_white")
+    fig.write_html(os.path.join("results", filename))
+
+# --- 8. FIRST HITTING TIME (CONVERGENCE SPEED) ---
+def plot_first_hitting_time(hitting_times_dict, title="First Hitting Time", filename="hitting_time.html"):
+    algos = list(hitting_times_dict.keys())
+    times = list(hitting_times_dict.values())
+    fig = go.Figure(data=[go.Bar(x=algos, y=times, text=[f"{t:.1f}" for t in times], textposition='auto', marker_color='indianred')])
+    fig.update_layout(title=title, template="plotly_white", xaxis_title="Algorithms", yaxis_title="Iterations to Threshold")
+    fig.write_html(os.path.join("results", filename))
+
+# --- 9. FITNESS DEGRADATION (CURSE OF DIMENSIONALITY) ---
+def plot_fitness_degradation(dims, fitness_dict, title="Fitness Degradation", filename="degradation.html"):
+    fig = go.Figure()
+    colors = px.colors.qualitative.Plotly
+    for i, (algo, fitnesses) in enumerate(fitness_dict.items()):
+        fig.add_trace(go.Scatter(x=dims, y=fitnesses, mode='lines+markers', name=algo, 
+                                 line=dict(color=colors[i%len(colors)], width=3), marker=dict(size=8)))
+    fig.update_layout(title=title, template="plotly_white", xaxis_title="Dimensions", yaxis_title="Best Fitness (Log Scale)", yaxis_type="log")
     fig.write_html(os.path.join("results", filename))

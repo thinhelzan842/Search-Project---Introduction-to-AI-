@@ -2,30 +2,30 @@ from algorithms import *
 from problems import *
 
 from utils.evaluator import BenchmarkEngine
-from utils.visualization import plot_scalability, plot_heatmap
+from utils.visualization import plot_scalability, plot_heatmap, plot_fitness_degradation
 import os
 import numpy as np
 
 def main():
     # -----------------------------------------------------------------------
-    # Algorithm instances - Giảm max_iters xuống 300 để tiết kiệm thời gian
+    # Algorithm instances - Reduce max_iters/gen/max_epochs to 50 to save some times
     # -----------------------------------------------------------------------
-    hb      = HillClimbing(max_iters=300, step_size=0.5, num_neighbors=15)
-    ts      = TabuSearch(max_iters=300, tabu_tenure=10, num_neighbors=20, step_size=0.5)
-    sa      = SimulatedAnnealing(max_epochs=300, initial_temp=100.0, cooling_rate=0.99,
+    hb      = HillClimbing(max_iters=50, step_size=0.5, num_neighbors=15)
+    ts      = TabuSearch(max_iters=50, tabu_tenure=10, num_neighbors=20, step_size=0.5)
+    sa      = SimulatedAnnealing(max_epochs=50, initial_temp=100.0, cooling_rate=0.99,
                                  step_size=0.5, markov_chain_length=20)
-    gsa     = GravitationalSearchAlgorithm(pop_size=30, max_iters=300, G0=100.0, alpha=20.0)
-    hs      = HarmonySearch(max_iters=300, hmcr=0.9, par=0.3, bw=0.1)
-    pso     = PSO(num_particles=20, max_iters=300)
-    aco     = ACO(num_ants=20, max_iters=300)
-    co      = CuckooOptimization(num_nests=20, max_iters=300)
-    tlbo    = TLBO(pop_size=20, max_iters=300)
-    ff      = FireflyAlgorithm(popsize=20, gen=300)
-    abc     = ArtificialBeeColony(popsize=20, gen=300)
-    de      = DifferentialEvolution(popsize=20, gen=300)
-    ga_cont = GeneticAlgorithm(size=20, gen=300, desire=0.001,
+    gsa     = GravitationalSearchAlgorithm(pop_size=30, max_iters=50, G0=100.0, alpha=20.0)
+    hs      = HarmonySearch(max_iters=50, hmcr=0.9, par=0.3, bw=0.1)
+    pso     = PSO(num_particles=20, max_iters=50)
+    aco     = ACO(num_ants=20, max_iters=50)
+    co      = CuckooOptimization(num_nests=20, max_iters=50)
+    tlbo    = TLBO(pop_size=20, max_iters=50)
+    ff      = FireflyAlgorithm(popsize=20, gen=50)
+    abc     = ArtificialBeeColony(popsize=20, gen=50)
+    de      = DifferentialEvolution(popsize=20, gen=50)
+    ga_cont = GeneticAlgorithm(size=20, gen=50, desire=None,
                                crossover_type='multi_point', mutation_type='gaussian')
-    ga_disc = GeneticAlgorithm(size=20, gen=300, desire=None,
+    ga_disc = GeneticAlgorithm(size=20, gen=50, desire=None,
                                crossover_type='multi_point', mutation_type='bit_flip')
 
     bfs    = BFS()
@@ -95,7 +95,7 @@ def main():
     
     for dim in dimensions:
         prob_scale = Sphere(dim=dim, bound=5.0) 
-        algo_scale = PSO(num_particles=30, max_iters=200) 
+        algo_scale = PSO(num_particles=30, max_iters=50) 
         
         engine_scale = BenchmarkEngine(algorithms=[algo_scale], problems=[prob_scale], num_runs=5) 
         engine_scale.run_all()
@@ -112,10 +112,36 @@ def main():
     print(">> Scalability report generated: results/scalability_pso.html")
 
     # -----------------------------------------------------------------------
-    # 5. PARAMETER SENSITIVITY ANALYSIS (Tăng num_runs lên 5)
+    # 5. CURSE OF DIMENSIONALITY (Sự suy thoái do số chiều cao trên Rastrigin)
     # -----------------------------------------------------------------------
     print("\n" + "=" * 60)
-    print("BENCHMARK 5 — PARAMETER SENSITIVITY (Grid Search on GA)")
+    print("BENCHMARK 5 — CURSE OF DIMENSIONALITY (RASTRIGIN)")
+    print("=" * 60)
+    
+    dims_deg = [2, 10, 30, 50, 100]
+    deg_results = {'PSO': [], 'Genetic Algorithm': [], 'Simulated Annealing': []}
+    
+    for dim in dims_deg:
+        prob = Rastrigin(dim=dim, bound=5.12)
+        algos = [PSO(num_particles=30, max_iters=50), 
+                 GeneticAlgorithm(size=30, gen=50, crossover_type='multi_point', mutation_type='gaussian'),
+                 SimulatedAnnealing(max_epochs=50, initial_temp=100.0, cooling_rate=0.95, step_size=0.5, markov_chain_length=10)]
+        
+        engine_deg = BenchmarkEngine(algorithms=algos, problems=[prob], num_runs=3)
+        engine_deg.run_all()
+        
+        for key in deg_results.keys():
+            scores = [r['best_score'] for r in engine_deg.results if r['algo'] == key]
+            deg_results[key].append(np.mean(scores) if scores else float('inf'))
+            
+    plot_fitness_degradation(dims_deg, deg_results, title="Fitness Degradation on Rastrigin", filename="curse_of_dimensionality.html")
+    print(">> Curse of dimensionality report generated: results/curse_of_dimensionality.html")
+
+    # -----------------------------------------------------------------------
+    # 6. PARAMETER SENSITIVITY ANALYSIS (Grid Search on GA)
+    # -----------------------------------------------------------------------
+    print("\n" + "=" * 60)
+    print("BENCHMARK 6 — GA PARAMETER SENSITIVITY")
     print("=" * 60)
     
     mut_probs = [0.01, 0.05, 0.1, 0.3]
@@ -126,10 +152,9 @@ def main():
     for i, mut in enumerate(mut_probs):
         for j, cross in enumerate(cross_probs):
             print(f"  >> Testing GA with Mut={mut}, Cross={cross}...")
-            ga_sens = GeneticAlgorithm(size=20, gen=200, crossover_prob=cross, mutate_prob=mut,
+            ga_sens = GeneticAlgorithm(size=20, gen=50, crossover_prob=cross, mutate_prob=mut,
                                        crossover_type='multi_point', mutation_type='gaussian')
-            # Chạy 5 lần để đảm bảo heatmap không bị nhiễu do yếu tố ngẫu nhiên
-            engine_sens = BenchmarkEngine(algorithms=[ga_sens], problems=[prob_sens], num_runs=5)
+            engine_sens = BenchmarkEngine(algorithms=[ga_sens], problems=[prob_sens], num_runs=3)
             engine_sens.run_all()
             
             avg_score = np.mean([r['best_score'] for r in engine_sens.results])
@@ -139,9 +164,34 @@ def main():
                  algos=[f"MutRate={m}" for m in mut_probs], 
                  problems=[f"CrossRate={c}" for c in cross_probs], 
                  title="GA Parameter Sensitivity Analysis (Best Fitness)", 
-                 filename="parameter_sensitivity.html")
-    print(">> Parameter sensitivity report generated: results/parameter_sensitivity.html")
-    print("\n[Done] All HTML reports saved to the results/ directory.")
+                 filename="ga_parameter_sensitivity.html")
+    print(">> GA Parameter sensitivity report generated: results/ga_parameter_sensitivity.html")
+
+    # -----------------------------------------------------------------------
+    # 7. PARAMETER SENSITIVITY ANALYSIS (Grid Search on SA)
+    # -----------------------------------------------------------------------
+    print("\n" + "=" * 60)
+    print("BENCHMARK 7 — SA PARAMETER SENSITIVITY")
+    print("=" * 60)
+    
+    cooling_rates = [0.8, 0.9, 0.95, 0.99]
+    step_sizes = [0.1, 0.5, 1.0, 2.0]
+    sa_sens_matrix = np.zeros((len(cooling_rates), len(step_sizes)))
+    prob_sens_sa = Ackley(dim=5, bound=5.0)
+    
+    for i, cool in enumerate(cooling_rates):
+        for j, step in enumerate(step_sizes):
+            print(f"  >> Testing SA with CoolRate={cool}, Step={step}...")
+            sa_sens = SimulatedAnnealing(max_epochs=50, initial_temp=100.0, cooling_rate=cool, step_size=step, markov_chain_length=10)
+            engine_sens_sa = BenchmarkEngine(algorithms=[sa_sens], problems=[prob_sens_sa], num_runs=3)
+            engine_sens_sa.run_all()
+            sa_sens_matrix[i, j] = np.mean([r['best_score'] for r in engine_sens_sa.results])
+            
+    plot_heatmap(sa_sens_matrix, algos=[f"Cool={c}" for c in cooling_rates], problems=[f"Step={s}" for s in step_sizes], 
+                 title="SA Parameter Sensitivity Analysis (Best Fitness)", filename="sa_parameter_sensitivity.html")
+    print(">> SA Parameter sensitivity report generated: results/sa_parameter_sensitivity.html")
+
+    print("\n[Done] All amazing HTML reports saved to the results/ directory.")
 
 if __name__ == "__main__":
     main()
