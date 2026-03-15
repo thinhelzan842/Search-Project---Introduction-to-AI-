@@ -1,6 +1,6 @@
 import math
 import random
-from typing import List, Any
+from typing import List, Any, Tuple
 from core import DiscreteSearchProblem
 
 class GraphColoring(DiscreteSearchProblem[List[int]]):
@@ -55,6 +55,7 @@ class Knapsack(DiscreteSearchProblem[List[int]]):
         self.limit = limit
         self.profits = [random.randint(1, size) for _ in range(self.size)]
         self.weights = [random.randint(1, size) for _ in range(self.size)]
+        self.total_profits = sum(self.profits)
 
     def random_solution_generate(self) -> List[int]:
         res = [0] * self.size
@@ -77,7 +78,7 @@ class Knapsack(DiscreteSearchProblem[List[int]]):
             res += self.profits[i] * v
             weight += self.weights[i] * v
         # Return negative profit to enforce unified min-optimization
-        return float('inf') if weight > self.limit else float(-res)
+        return float('inf') if weight > self.limit else float(-res + self.total_profits)
 
     def is_goal(self, solution: List[int]) -> bool:
         return len(solution) == self.size
@@ -270,3 +271,136 @@ class TravelingSalesman(DiscreteSearchProblem[List[int]]):
             h_cost += min_edge
             
         return float(h_cost)
+
+class EuclideanShortestPath(DiscreteSearchProblem[List[int]]):
+    def __init__(self, size: int, edge_probability: float=0.4):
+        super().__init__()
+        self.size = size
+        self.adj = [[] for _ in range(size)]
+        
+        # Spatial coordinates for calculating distances
+        self.coords = [(random.uniform(0, 100), random.uniform(0, 100)) for _ in range(size)]
+        
+        for i in range(self.size):
+            for j in range(i + 1, self.size):
+                if random.random() < edge_probability:
+                    self.adj[i].append(j)
+                    self.adj[j].append(i)
+                    
+        # Ensure a baseline path exists to prevent totally disjoint graphs
+        for i in range(self.size - 1):
+            if i + 1 not in self.adj[i]:
+                self.adj[i].append(i + 1)
+                self.adj[i + 1].append(i)
+
+    def _distance(self, u: int, v: int) -> float:
+        """Helper to calculate Euclidean distance between two nodes."""
+        x1, y1 = self.coords[u]
+        x2, y2 = self.coords[v]
+        return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+
+    def random_solution_generate(self) -> List[int]:
+        path = [0]
+        for _ in range(self.size):
+            current = path[-1]
+            if current == self.size - 1: break
+            possible = [n for n in self.adj[current] if n not in path]
+            if not possible: break
+            path.append(random.choice(possible))
+        return path
+
+    def get_initial_state(self) -> List[int]: 
+        return [0]
+        
+    def name(self) -> str: 
+        return "Euclidean Shortest Path"
+        
+    def info(self) -> Any: 
+        return {"size": self.size, "graph": self.adj, "coords": self.coords}
+
+    def evaluate(self, solution: List[int]) -> float:
+        if not solution: return 0.0
+        
+        total_distance = 0.0
+        for i in range(len(solution) - 1):
+            u, v = solution[i], solution[i + 1]
+            # Penalize heavily if the proposed path takes an edge that doesn't exist
+            if v not in self.adj[u]:
+                return float('inf') 
+            total_distance += self._distance(u, v)
+            
+        return total_distance
+
+    def is_goal(self, solution: List[int]) -> bool:
+        return solution[-1] == self.size - 1 if solution else False
+
+    def get_neighbors(self, current_state: List[int]) -> List[List[int]]:
+        if not current_state: return []
+        node = current_state[-1]
+        return [current_state + [v] for v in self.adj[node] if v not in current_state]
+
+    def get_heuristic(self, state: List[int]) -> float:
+        if not state: return 0.0
+        current = state[-1]
+        goal = self.size - 1
+        
+        if current == goal: return 0.0
+        
+        # Perfect Admissible Heuristic: Straight line distance to the goal
+        return self._distance(current, goal)
+
+
+GridState = List[Tuple[int, int]]
+
+class GridShortestPath(DiscreteSearchProblem[GridState]):
+    def __init__(self, width: int, height: int, obstacle_probability: float = 0.2):
+        self.width = width
+        self.height = height
+        self.start = (0, 0)
+        self.goal = (width - 1, height - 1)
+
+        self.grid = [[True for _ in range(height)] for _ in range(width)]
+        for x in range(width):
+            for y in range(height):
+                if (x, y) not in (self.start, self.goal):
+                    if random.random() < obstacle_probability:
+                        self.grid[x][y] = False
+
+    def name(self) -> str:
+        return "2D Grid Shortest Path"
+
+    def get_initial_state(self) -> GridState:
+        return [self.start]
+
+    def is_goal(self, solution: GridState) -> bool:
+        return solution[-1] == self.goal if solution else False
+
+    def get_neighbors(self, current_state: GridState) -> List[GridState]:
+        if not current_state: return []
+        x, y = current_state[-1]
+        neighbors = []
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.width and 0 <= ny < self.height:
+                # Prevent immediate backtracking by checking if it's already in current_state
+                if self.grid[nx][ny] and (nx, ny) not in current_state:
+                    neighbors.append(current_state + [(nx, ny)])
+        return neighbors
+
+    def get_heuristic(self, state: GridState) -> float:
+        if not state: return 0.0
+        x, y = state[-1]
+        return float(abs(x - self.goal[0]) + abs(y - self.goal[1]))
+
+    def evaluate(self, solution: GridState) -> float:
+        if not solution: return 0.0
+        return float(len(solution) - 1) # Cost is now total path length
+
+    def random_solution_generate(self) -> GridState:
+        while True:
+            x = random.randint(0, self.width - 1)
+            y = random.randint(0, self.height - 1)
+            if self.grid[x][y]:
+                return [(x, y)]

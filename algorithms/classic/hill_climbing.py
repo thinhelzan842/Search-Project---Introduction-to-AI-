@@ -74,7 +74,7 @@ class HillClimbing(AlgorithmBase):
 
             if isinstance(problem, ContinuousProblem):
                 current_step_size *= self.step_decay
-            elif hasattr(problem, 'is_goal') and problem.is_goal(best_sol) and best_score != float('inf'): 
+            elif hasattr(problem, 'get_optimal_value') and best_score <= problem.get_optimal_value() + 1e-9:
                 break
 
         return best_sol, best_score

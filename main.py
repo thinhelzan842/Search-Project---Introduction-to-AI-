@@ -23,9 +23,9 @@ def main():
     ff      = FireflyAlgorithm(popsize=20, gen=50)
     abc     = ArtificialBeeColony(popsize=20, gen=50)
     de      = DifferentialEvolution(popsize=20, gen=50)
-    ga_cont = GeneticAlgorithm(size=20, gen=50, desire=None,
+    ga_cont = GeneticAlgorithm(size=20, gen=50,
                                crossover_type='multi_point', mutation_type='gaussian')
-    ga_disc = GeneticAlgorithm(size=20, gen=50, desire=None,
+    ga_disc = GeneticAlgorithm(size=20, gen=50,
                                crossover_type='multi_point', mutation_type='bit_flip')
 
     bfs    = BFS()

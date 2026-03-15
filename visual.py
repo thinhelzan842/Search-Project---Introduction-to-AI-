@@ -201,31 +201,41 @@ if st.button("Run Algorithm", type="primary"):
             # Lấy tọa độ (nếu có) hoặc sinh tự động
             if hasattr(problem, 'coords'):
                 coords = problem.coords
+            ax.set_title(f"{algo_name} running on {problem_name}")
+        
+        if problem_name in ["Shortest Path", "Traveling Salesman", "Graph Coloring"]:
+            # Lấy tọa độ
+            if hasattr(problem, 'coords'):
+                coords = problem.coords
             else:
                 coords = get_circle_coords(problem.size)
                 
             x_coords = [c[0] for c in coords]
             y_coords = [c[1] for c in coords]
             
-            # Vẽ các cạnh nền
+            # --- 1. VẼ CẠNH NỀN (Allowed Edges) ---
             if hasattr(problem, 'adj'):
                 for i in range(len(problem.adj)):
                     for j in problem.adj[i]:
                         if i < j:
-                            ax.plot([coords[i][0], coords[j][0]], [coords[i][1], coords[j][1]], c='lightgray', zorder=1, alpha=0.4)
-            elif hasattr(problem, 'costs'):
-                for i in range(problem.size):
-                    for j in range(i+1, problem.size):
-                        if problem.costs[i][j] != float('inf'):
-                            ax.plot([coords[i][0], coords[j][0]], [coords[i][1], coords[j][1]], c='lightgray', zorder=1, alpha=0.2)
-                            
-            node_scatter = ax.scatter(x_coords, y_coords, c='skyblue', edgecolors='black', s=100, zorder=3)
+                            ax.plot([coords[i][0], coords[j][0]], [coords[i][1], coords[j][1]], 
+                                    c='gray', alpha=0.2, linewidth=0.8, zorder=1)
             
+            # --- 2. VẼ NODE & ID (Giống Plotly) ---
+            node_scatter = ax.scatter(x_coords, y_coords, c='darkslategrey', s=60, zorder=3)
+            for i, (x, y) in enumerate(coords):
+                ax.text(x + 1, y + 1, f"ID: {i}", fontsize=8, fontweight='bold', zorder=6)
+            
+            # --- 3. ĐIỂM ĐẦU/CUỐI ĐẶC BIỆT ---
             if problem_name == "Shortest Path":
-                ax.scatter(coords[0][0], coords[0][1], c='green', s=150, zorder=4, label='Start')
-                ax.scatter(coords[-1][0], coords[-1][1], c='red', s=150, zorder=4, label='Goal')
+                ax.scatter(coords[0][0], coords[0][1], c='lime', s=180, edgecolors='black', 
+                           linewidth=1.5, zorder=5, label='START')
+                ax.scatter(coords[-1][0], coords[-1][1], c='red', s=250, marker='*', 
+                           edgecolors='black', linewidth=1.5, zorder=5, label='END')
+                ax.legend(loc='upper right')
                 
-            path_line, = ax.plot([], [], c='blue', linewidth=3, zorder=2)
+            # Line vẽ đường đi: thêm marker tròn và màu xanh Plotly
+            path_line, = ax.plot([], [], c='#636EFA', linewidth=3, marker='o', markersize=5, zorder=4)
             
         elif problem_name == "Knapsack":
             # Bar chart cho bài toán cái túi
@@ -251,14 +261,21 @@ if st.button("Run Algorithm", type="primary"):
             if best_solution is not None and len(best_solution) >= 2:
                 best_scatter.set_offsets([best_solution[0], best_solution[1]])
                 
-        else:
+        else: # Phần Discrete trong vòng lặp (Dòng 232)
             if best_solution and best_score != float('inf'):
                 if problem_name in ["Shortest Path", "Traveling Salesman"]:
-                    path_x = [coords[node][0] for node in best_solution]
-                    path_y = [coords[node][1] for node in best_solution]
+                    # Kiểm tra nếu best_solution là danh sách tọa độ (Grid) hay ID (Graph)
+                    if isinstance(best_solution[0], (list, tuple, np.ndarray)):
+                        path_x = [p[0] for p in best_solution]
+                        path_y = [p[1] for p in best_solution]
+                    else:
+                        path_x = [coords[node][0] for node in best_solution]
+                        path_y = [coords[node][1] for node in best_solution]
+                    
                     if problem_name == "Traveling Salesman" and len(best_solution) > 1:
-                        path_x.append(coords[best_solution[0]][0]) # Quay về điểm đầu
-                        path_y.append(coords[best_solution[0]][1])
+                        path_x.append(path_x[0])
+                        path_y.append(path_y[0])
+                        
                     path_line.set_data(path_x, path_y)
                     
                 elif problem_name == "Graph Coloring":

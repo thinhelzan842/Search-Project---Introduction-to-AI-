@@ -4,7 +4,6 @@ from typing import Any, List, Tuple
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, List, Tuple, Iterable
 
-# T represents the State/Solution type (e.g., List[float], int, Tuple[int, int])
 T = TypeVar('T') 
 
 class ProblemBase(ABC, Generic[T]):
@@ -13,11 +12,8 @@ class ProblemBase(ABC, Generic[T]):
         pass
     
     @abstractmethod
-    def evaluate(self, solution: T) -> float: 
-        """Always scaled for min-optimization."""
+    def evaluate(self, solution: T) -> float: #min-optimization
         pass
-
-# --- Mixins/Traits (Capabilities) ---
 
 class HasBounds(ABC):
     @abstractmethod
@@ -44,17 +40,35 @@ class HasHeuristic(ABC, Generic[T]): #admissible heuristic for A* and similar al
     def get_heuristic(self, solution: T) -> float:
         pass
 
-# --- Concrete Base Types ---
 
 class ContinuousProblem(ProblemBase[List[float]], HasBounds, GeneratesRandom[List[float]]):
-    """Algorithms like standard ABC or Continuous GA will expect this interface."""
-    pass
+    def get_optimal_value(self) -> float:
+        return 0.0
 
 class DiscreteSearchProblem(ProblemBase[T], HasNeighbors[T], HasGoal[T]):
-    """Algorithms like A*, BFS, DFS will expect this interface."""
     @abstractmethod
     def get_initial_state(self) -> T:
         pass
+
+    def get_optimal_value(self) -> float:
+        if getattr(self, '_optimal_value', None) is not None:
+            return self._optimal_value
+
+        from algorithms import UCS
+
+        print(f"      [System] Calculating true optimum for {self.name()} using UCS...")
+        ucs_solver = UCS()
+        best_val = float('inf')
+
+        try:
+            for state in ucs_solver.run(self):
+                best_val = state.get('best_score', best_val)
+            self._optimal_value = best_val
+        except Exception as e:
+            print(f"      [Warning] UCS failed to find optimal value: {e}")
+            self._optimal_value = 0.0  # fallback
+
+        return self._optimal_value
 
 class AlgorithmBase(ABC):
     @abstractmethod
