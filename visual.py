@@ -38,9 +38,15 @@ if problem_type == "Continuous":
     problem = problems_dict[problem_name](dim=2, bound=bound_val)
 
     st.sidebar.header("2. Algorithm Settings")
-    algo_name = st.sidebar.selectbox("Select Algorithm", ["PSO", "SimulatedAnnealing", "HillClimbing", "ArtificialBeeColony"])
+    
+    # --- MỞ RỘNG DANH SÁCH THUẬT TOÁN CONTINUOUS ---
+    algo_name = st.sidebar.selectbox("Select Algorithm", [
+        "PSO", "SimulatedAnnealing", "HillClimbing", "ArtificialBeeColony",
+        "CuckooOptimization", "FireflyAlgorithm", "TabuSearch", 
+        "GravitationalSearchAlgorithm", "HarmonySearch", "TLBO", 
+        "DifferentialEvolution", "GeneticAlgorithm"
+    ])
 
-    # Render dynamic sliders matching main.py defaults
     if algo_name == "PSO":
         num_particles = st.sidebar.slider("Number of particles", 5, 100, 20)
         max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
@@ -52,11 +58,7 @@ if problem_type == "Continuous":
         cooling_rate = st.sidebar.slider("Cooling rate", 0.8, 0.999, 0.99)
         step_size = st.sidebar.slider("Step size", 0.1, 2.0, 0.5)
         markov_chain_length = st.sidebar.slider("Markov Chain Length", 5, 50, 20)
-        algo = SimulatedAnnealing(
-            max_epochs=max_epochs, initial_temp=initial_temp, 
-            cooling_rate=cooling_rate, step_size=step_size, 
-            markov_chain_length=markov_chain_length
-        )
+        algo = SimulatedAnnealing(max_epochs=max_epochs, initial_temp=initial_temp, cooling_rate=cooling_rate, step_size=step_size, markov_chain_length=markov_chain_length)
 
     elif algo_name == "HillClimbing":
         max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
@@ -68,6 +70,47 @@ if problem_type == "Continuous":
         popsize = st.sidebar.slider("Population size", 10, 100, 20)
         max_gens = st.sidebar.slider("Max generations", 10, 200, 50)
         algo = ArtificialBeeColony(popsize=popsize, gen=max_gens)
+        
+    elif algo_name == "CuckooOptimization":
+        num_nests = st.sidebar.slider("Number of nests", 5, 100, 20)
+        max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
+        algo = CuckooOptimization(num_nests=num_nests, max_iters=max_iters)
+        
+    elif algo_name == "FireflyAlgorithm":
+        popsize = st.sidebar.slider("Population size", 10, 100, 20)
+        gen = st.sidebar.slider("Max generations", 10, 200, 50)
+        algo = FireflyAlgorithm(popsize=popsize, gen=gen)
+        
+    elif algo_name == "TabuSearch":
+        max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
+        tabu_tenure = st.sidebar.slider("Tabu tenure", 5, 50, 10)
+        num_neighbors = st.sidebar.slider("Number of neighbors", 5, 50, 20)
+        algo = TabuSearch(max_iters=max_iters, tabu_tenure=tabu_tenure, num_neighbors=num_neighbors, step_size=0.5)
+
+    elif algo_name == "GravitationalSearchAlgorithm":
+        pop_size = st.sidebar.slider("Population size", 10, 100, 30)
+        max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
+        algo = GravitationalSearchAlgorithm(pop_size=pop_size, max_iters=max_iters, G0=100.0, alpha=20.0)
+
+    elif algo_name == "HarmonySearch":
+        max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
+        hmcr = st.sidebar.slider("HMCR", 0.1, 1.0, 0.9)
+        algo = HarmonySearch(max_iters=max_iters, hmcr=hmcr, par=0.3, bw=0.1)
+
+    elif algo_name == "TLBO":
+        pop_size = st.sidebar.slider("Population size", 10, 100, 20)
+        max_iters = st.sidebar.slider("Max iterations", 10, 200, 50)
+        algo = TLBO(pop_size=pop_size, max_iters=max_iters)
+
+    elif algo_name == "DifferentialEvolution":
+        popsize = st.sidebar.slider("Population size", 10, 100, 20)
+        gen = st.sidebar.slider("Max generations", 10, 200, 50)
+        algo = DifferentialEvolution(popsize=popsize, gen=gen)
+
+    elif algo_name == "GeneticAlgorithm":
+        size = st.sidebar.slider("Population size", 10, 100, 20)
+        gen = st.sidebar.slider("Max generations", 10, 200, 50)
+        algo = GeneticAlgorithm(size=size, gen=gen, crossover_type='multi_point', mutation_type='gaussian')
 
 else:
     problem_name = st.sidebar.selectbox("Select Problem", 

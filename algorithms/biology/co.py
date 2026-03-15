@@ -24,7 +24,8 @@ class CuckooOptimization(AlgorithmBase):
         
         yield {
             'iteration': 0, 'current_solution': best_nest.tolist(), 'current_score': best_fitness,
-            'best_solution': best_nest.tolist(), 'best_score': best_fitness, 'population_scores': list(fitness)
+            'best_solution': best_nest.tolist(), 'best_score': best_fitness, 'population_scores': list(fitness),
+            'population': nests.copy()
         }
         
         for iteration in range(self.max_iters):
@@ -57,5 +58,6 @@ class CuckooOptimization(AlgorithmBase):
             
             yield {
                 'iteration': iteration + 1, 'current_solution': best_nest.tolist(), 'current_score': best_fitness,
-                'best_solution': best_nest.tolist(), 'best_score': best_fitness, 'population_scores': list(fitness)
+                'best_solution': best_nest.tolist(), 'best_score': best_fitness, 'population_scores': list(fitness),
+                'population': nests.copy()
             }
