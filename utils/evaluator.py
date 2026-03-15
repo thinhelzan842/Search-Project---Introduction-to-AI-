@@ -25,6 +25,8 @@ class BenchmarkEngine:
         
         for problem in self.problems:
             print(f"\n{'='*50}\n Problem: {problem.name().upper()}\n{'='*50}")
+            true_optimum = problem.get_optimal_value()
+            print(f"  [Info] True Optimal Value for {problem.name()}: {true_optimum}")
             
             for algo in self.algorithms:
                 print(f"  >> Running: [ {algo.name()} ]...")
@@ -56,13 +58,21 @@ class BenchmarkEngine:
                         current_mem, peak_mem = tracemalloc.get_traced_memory()
                         tracemalloc.stop()
                         peak_mem_kb = peak_mem / 1024.0
-                        
+
+                        # ---> NEW: Calculate Optimality Gap
+                        gap = abs(best_score_final - true_optimum)
+                        if best_score_final == float('inf'):
+                            gap = float('inf')  # Keep infinity if no solution found
+
                         run_result = {
                             'algo': algo.name(), 'problem': problem.name(),
-                            'best_score': best_score_final, 'history': history,
+                            'best_score': best_score_final,
+                            'gap': gap,  # ---> NEW: Store gap
+                            'history': history,
                             'trajectory': trajectory, 'time': exec_time,
                             'space_peak_kb': peak_mem_kb
                         }
+
                         if diversity_history:
                             run_result['diversity_history'] = diversity_history
                         self.results.append(run_result)
@@ -85,6 +95,7 @@ class BenchmarkEngine:
         for problem in self.problems:
             all_histories = {algo.name(): [] for algo in self.algorithms}
             final_scores = {algo.name(): [] for algo in self.algorithms}
+            final_gaps = {algo.name(): [] for algo in self.algorithms}
             trajectories = {}
             all_diversities = {algo.name(): [] for algo in self.algorithms}
             
@@ -93,6 +104,7 @@ class BenchmarkEngine:
                 if run['problem'] == problem.name():
                     algo_name = run['algo']
                     all_histories[algo_name].append(run['history'])
+                    final_gaps[algo_name].append(run['gap'])
                     final_scores[algo_name].append(run['best_score'])
                     
                     # Lấy trajectory của lần chạy tốt nhất để vẽ 3D
@@ -107,7 +119,13 @@ class BenchmarkEngine:
             
             # Gọi các hàm vẽ mới
             plot_convergence_robust(all_histories, title=f"Convergence - {problem.name()}", filename=f"convergence_{safe_name}.html")
-            plot_boxplot_performance(final_scores, title=f"Robustness (Boxplot) - {problem.name()}", filename=f"boxplot_{safe_name}.html")
+            plot_boxplot_performance(final_gaps, title=f"Optimality Gap (Boxplot) - {problem.name()}",
+                                     filename=f"boxplot_gap_{safe_name}.html")
+
+            # ---> NEW: Call the dedicated gap visualization you already have in visualization.py
+            from utils.visualization import plot_solution_quality
+            plot_solution_quality(final_gaps, title=f"Solution Quality (Optimality Gap) - {problem.name()}",
+                                  filename=f"quality_{safe_name}.html")
             
             # Vẽ Exploration/Exploitation bằng cách tính TRUNG BÌNH các lần chạy
             # Fix lỗi tính Diversity trung bình khi các lần chạy có độ dài khác nhau

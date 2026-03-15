@@ -10,11 +10,11 @@ def main():
     # -----------------------------------------------------------------------
     # Algorithm instances - Giảm max_iters xuống 300 để tiết kiệm thời gian
     # -----------------------------------------------------------------------
-    hb      = HillClimbing(max_iters=300, step_size=0.5, num_neighbors=15)
+    hb      = HillClimbing(max_iters=300, step_size=0.5, num_neighbors=20)
     ts      = TabuSearch(max_iters=300, tabu_tenure=10, num_neighbors=20, step_size=0.5)
     sa      = SimulatedAnnealing(max_epochs=300, initial_temp=100.0, cooling_rate=0.99,
                                  step_size=0.5, markov_chain_length=20)
-    gsa     = GravitationalSearchAlgorithm(pop_size=30, max_iters=300, G0=100.0, alpha=20.0)
+    gsa     = GravitationalSearchAlgorithm(pop_size=20, max_iters=300, G0=100.0, alpha=20.0)
     hs      = HarmonySearch(max_iters=300, hmcr=0.9, par=0.3, bw=0.1)
     pso     = PSO(num_particles=20, max_iters=300)
     aco     = ACO(num_ants=20, max_iters=300)
@@ -23,9 +23,9 @@ def main():
     ff      = FireflyAlgorithm(popsize=20, gen=300)
     abc     = ArtificialBeeColony(popsize=20, gen=300)
     de      = DifferentialEvolution(popsize=20, gen=300)
-    ga_cont = GeneticAlgorithm(size=20, gen=300, desire=0.001,
+    ga_cont = GeneticAlgorithm(size=20, gen=300,
                                crossover_type='multi_point', mutation_type='gaussian')
-    ga_disc = GeneticAlgorithm(size=20, gen=300, desire=None,
+    ga_disc = GeneticAlgorithm(size=20, gen=300,
                                crossover_type='multi_point', mutation_type='bit_flip')
 
     bfs    = BFS()
@@ -41,14 +41,14 @@ def main():
     continuous_problems   = [
         Rastrigin(dim=2, bound=5.12), Sphere(dim=2, bound=5.0),
         Ackley(dim=2, bound=5.0), Rosenbrock(dim=2, bound=5.0),
-        Griewank(dim=2, bound=5.0)
+        Griewank(dim=2, bound=600.0)
     ]
 
     print("=" * 60)
     print("BENCHMARK 1 — CONTINUOUS PROBLEMS")
     print("=" * 60)
     engine_cont = BenchmarkEngine(algorithms=continuous_algorithms,
-                                  problems=continuous_problems, num_runs=30)
+                                  problems=continuous_problems, num_runs=1)
     engine_cont.run_all()
     engine_cont.generate_reports(prefix="continuous")
 
@@ -57,15 +57,15 @@ def main():
     # -----------------------------------------------------------------------
     discrete_algorithms = [hb, sa, ts, ga_disc, aco]
     discrete_problems   = [
-        TravelingSalesman(size=10, time_limit=2000, cost_limit=2000),
-        Knapsack(size=15, limit=40), GraphColoring(size=10)
+        TravelingSalesman(size=10, time_limit=200, cost_limit=80),
+        Knapsack(size=15, limit=30), GraphColoring(size=10)
     ]
 
     print("\n" + "=" * 60)
     print("BENCHMARK 2 — DISCRETE PROBLEMS")
     print("=" * 60)
     engine_disc = BenchmarkEngine(algorithms=discrete_algorithms,
-                                  problems=discrete_problems, num_runs=30)
+                                  problems=discrete_problems, num_runs=1)
     engine_disc.run_all()
     engine_disc.generate_reports(prefix="discrete")
 
@@ -73,13 +73,13 @@ def main():
     # 3. GRAPH-SEARCH BENCHMARK
     # -----------------------------------------------------------------------
     graph_algorithms = [bfs, dfs, ucs, greedy, astar, aco]
-    sp_problem       = ShortestPath(size=12)
+    sp_problem       = EuclideanShortestPath(size=15, edge_probability=0.3)
 
     print("\n" + "=" * 60)
     print("BENCHMARK 3 — GRAPH SEARCH vs METAHEURISTICS")
     print("=" * 60)
     engine_graph = BenchmarkEngine(algorithms=graph_algorithms,
-                                   problems=[sp_problem], num_runs=30)
+                                   problems=[sp_problem], num_runs=1)
     engine_graph.run_all()
     engine_graph.generate_reports(prefix="graph_search")
 
@@ -90,7 +90,7 @@ def main():
     print("BENCHMARK 4 — SCALABILITY & COMPLEXITY (Varying Problem Size)")
     print("=" * 60)
     
-    dimensions = [2, 10, 30, 50, 100]
+    dimensions = [2, 4, 8, 16, 32, 64]
     times, spaces, fitnesses = [], [], []
     
     for dim in dimensions:

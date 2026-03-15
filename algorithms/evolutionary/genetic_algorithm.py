@@ -3,16 +3,15 @@ import random
 from core import AlgorithmBase
 
 class GeneticAlgorithm(AlgorithmBase):
-    def __init__(self, size, gen, desire=None, mutate_prob=0.1, crossover_prob=0.9,
+    def __init__(self, size, gen, mutate_prob=0.1, crossover_prob=0.9,
                  tournament_size=3, crossover_type='one_point', mutation_type='bit_flip', 
-                 sigma=0.1, points=2, tol=1e-6):
-        self.size, self.gen, self.desire = size, gen, desire
+                 sigma=0.1, points=2):
+        self.size, self.gen = size, gen
         self.mutate_prob, self.crossover_prob = mutate_prob, crossover_prob
         self.tournament_size = tournament_size
         self.crossover_type = crossover_type
         self.mutation_type = mutation_type
         self.sigma, self.points = sigma, points
-        self.tol = tol # Thêm dung sai (tolerance) để kiểm soát độ hội tụ chặt chẽ hơn
 
     def name(self) -> str: 
         return f"GA ({self.crossover_type} + {self.mutation_type})"
@@ -56,8 +55,9 @@ class GeneticAlgorithm(AlgorithmBase):
             child[idx1], child[idx2] = child[idx2], child[idx1]
         return child
 
-    def _mutate_gaussian(self, child):
-        return [gene + random.gauss(0, self.sigma) if random.random() < self.mutate_prob else gene for gene in child]
+    def _mutate_gaussian(self, child, problem):
+        bounds = problem.get_bounds()
+        return [max(bounds[i][0], min(bounds[i][1], g + random.gauss(0, self.sigma))) if random.random() < self.mutate_prob else g for i, g in enumerate(child)]
 
     def select(self, pop, scores):
         participants = random.sample(list(zip(pop, scores)), min(len(pop), self.tournament_size))
@@ -78,10 +78,9 @@ class GeneticAlgorithm(AlgorithmBase):
             'best_solution': best_sol, 'best_score': best_scr, 'population_scores': list(scr_list)
         }
 
-        gen, diff = 0, float('inf')
+        gen = 0
 
-        # CẬP NHẬT: Thay 0.1 bằng self.tol để tránh việc GA dừng quá sớm
-        while (self.desire is None or best_scr > self.desire) and gen < self.gen and diff > self.tol:
+        while (hasattr(problem, 'get_optimal_value') and best_scr <= problem.get_optimal_value() + 1e-9) and gen < self.gen:
             new_pop = [best_sol]  # Elitism
 
             while len(new_pop) < self.size:
@@ -98,7 +97,7 @@ class GeneticAlgorithm(AlgorithmBase):
 
                 # MUTATION
                 if self.mutation_type == 'swap': child = self._mutate_swap(child)
-                elif self.mutation_type == 'gaussian': child = self._mutate_gaussian(child)
+                elif self.mutation_type == 'gaussian': child = self._mutate_gaussian(child, problem)
                 else: child = self._mutate_bit_flip(child)
 
                 new_pop.append(child)
@@ -109,7 +108,6 @@ class GeneticAlgorithm(AlgorithmBase):
             new_best_idx = np.argmin(scr_list)
             new_best_sol, new_best_scr = self.pop[new_best_idx], scr_list[new_best_idx]
             
-            diff = abs(new_best_scr - best_scr)
             best_sol, best_scr = new_best_sol, new_best_scr
             gen += 1
 

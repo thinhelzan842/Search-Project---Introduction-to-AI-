@@ -157,7 +157,7 @@ class TLBO(AlgorithmBase):
                 'best_score': best_score
             }
 
-            if problem.is_goal(best_sol):
+            if hasattr(problem, 'get_optimal_value') and best_score <= problem.get_optimal_value() + 1e-9:
                 break
 
         return best_sol, best_score"""
